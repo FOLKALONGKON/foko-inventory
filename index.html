@@ -15,6 +15,7 @@
             background: linear-gradient(135deg, #090B14 0%, #0F172A 50%, #020617 100%);
             background-attachment: fixed;
             color: #e2e8f0;
+            user-select: none; /* ป้องกันการคลุมดำตอนดับเบิ้ลคลิก */
         }
 
         .glass-panel {
@@ -57,6 +58,7 @@
             transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             border: 1px solid rgba(255, 255, 255, 0.05);
             background-color: #1e293b;
+            cursor: pointer;
         }
         .item-card:hover {
             transform: translateY(-5px) scale(1.02);
@@ -130,11 +132,12 @@
     <main class="max-w-7xl mx-auto px-4">
         <div id="inventoryView">
             <div id="categoryTabs" class="flex space-x-2 overflow-x-auto hide-scrollbar pb-4 mb-4"></div>
+            <p class="text-xs text-slate-400 mb-4 text-center">💡 ดับเบิ้ลคลิกที่สินค้าเพื่อแก้ไขข้อมูล</p>
             <div id="itemGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"></div>
         </div>
 
         <div id="compareView" class="hidden">
-            <div id="compareGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+            <div id="compareGrid" class="flex flex-col gap-6"></div>
         </div>
     </main>
 
@@ -264,12 +267,73 @@
         `).join('');
     }
 
-    window.updateQty = async function(id, change) {
+    window.updateQty = async function(id, change, event) {
+        if(event) event.stopPropagation(); // ป้องกันการติด Event Double Click
         const item = state.items.find(i => i.id === id);
         if (!item) return;
         
         const newQty = Math.max(0, (item.qty || 0) + change);
         await updateDoc(doc(db, 'artifacts', appId, 'users', userId, 'inventory', id), { qty: newQty });
+    };
+
+    window.deleteProduct = async function(id, event) {
+        if(event) event.stopPropagation(); // ป้องกันการติด Event Double Click
+        const result = await Swal.fire({
+            title: 'ยืนยันการลบ?',
+            text: "คุณต้องการลบสินค้านี้ใช่หรือไม่",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#334155',
+            confirmButtonText: 'ลบข้อมูล',
+            cancelButtonText: 'ยกเลิก'
+        });
+        if(result.isConfirmed) {
+            await deleteDoc(doc(db, 'artifacts', appId, 'users', userId, 'inventory', id));
+        }
+    };
+
+    window.editProductModal = async function(id) {
+        const item = state.items.find(i => i.id === id);
+        if(!item) return;
+
+        const { value: formValues } = await Swal.fire({
+            title: 'แก้ไขสินค้า',
+            html: `
+                <input id="swal-edit-name" class="swal2-input mb-3" placeholder="ชื่อสินค้า" value="${item.name || ''}">
+                <div class="text-center text-xs text-slate-400 mb-1">ลิงก์รูปภาพเดิม / วางลิงก์ใหม่</div>
+                <input id="swal-edit-img-url" class="swal2-input mb-3" placeholder="วางลิงก์รูปภาพ (Base64/URL)" value="${item.image || ''}">
+                <select id="swal-edit-cat" class="swal2-select mb-3">
+                    ${categories.filter(c => c !== 'รวมสินค้าทั้งหมด').map(c => `<option value="${c}" ${item.category === c ? 'selected' : ''}>${c}</option>`).join('')}
+                </select>
+            `,
+            focusConfirm: false,
+            showCancelButton: true,
+            confirmButtonText: 'บันทึกการแก้ไข',
+            cancelButtonText: 'ยกเลิก',
+            preConfirm: () => {
+                const name = document.getElementById('swal-edit-name').value;
+                if (!name) {
+                    Swal.showValidationMessage('กรุณาใส่ชื่อสินค้า');
+                    return false;
+                }
+                return {
+                    name: name,
+                    image: document.getElementById('swal-edit-img-url').value,
+                    category: document.getElementById('swal-edit-cat').value
+                }
+            }
+        });
+
+        if (formValues) {
+            try {
+                await updateDoc(doc(db, 'artifacts', appId, 'users', userId, 'inventory', id), formValues);
+                Swal.fire({ icon: 'success', title: 'สำเร็จ', text: 'อัปเดตข้อมูลเรียบร้อย', timer: 1500, showConfirmButton: false });
+            } catch (error) {
+                console.error(error);
+                Swal.fire('ข้อผิดพลาด', 'ไม่สามารถบันทึกข้อมูลได้', 'error');
+            }
+        }
     };
 
     function render() {
@@ -284,18 +348,21 @@
             const isLow = item.qty <= 5;
             const bgImage = item.image && item.image.trim() !== '' ? item.image : 'https://via.placeholder.com/300x300/1e293b/94a3b8?text=No+Image';
             return `
-            <div class="item-card rounded-2xl overflow-hidden h-48 flex flex-col justify-end ${isLow ? 'low-stock' : ''}" style="background-image: url('${bgImage}')">
+            <div class="item-card rounded-2xl overflow-hidden h-48 flex flex-col justify-end ${isLow ? 'low-stock' : ''}" style="background-image: url('${bgImage}')" ondblclick="window.editProductModal('${item.id}')">
+                <button onclick="window.deleteProduct('${item.id}', event)" class="absolute top-2 right-2 text-red-400/80 hover:text-red-500 bg-slate-900/60 rounded-full w-8 h-8 flex items-center justify-center z-20 backdrop-blur-sm transition-all border border-red-500/30 hover:bg-red-500/20">
+                    <i class="fas fa-trash text-xs"></i>
+                </button>
                 <div class="item-overlay absolute inset-0"></div>
                 <div class="relative z-10 p-3 w-full">
                     <h3 class="font-semibold text-white text-sm mb-1 truncate drop-shadow-md">${item.name}</h3>
                     <div class="flex items-center justify-between mt-2">
-                        <button onclick="window.updateQty('${item.id}', -1)" class="w-8 h-8 rounded-full qty-btn flex items-center justify-center">
+                        <button onclick="window.updateQty('${item.id}', -1, event)" class="w-8 h-8 rounded-full qty-btn flex items-center justify-center">
                             <i class="fas fa-minus text-xs"></i>
                         </button>
-                        <div class="text-center px-2">
+                        <div class="text-center px-2" onclick="(e) => e.stopPropagation()">
                             <span class="text-2xl font-bold ${isLow ? 'text-red-400' : 'text-cyan-400'} drop-shadow-lg">${item.qty || 0}</span>
                         </div>
-                        <button onclick="window.updateQty('${item.id}', 1)" class="w-8 h-8 rounded-full qty-btn flex items-center justify-center">
+                        <button onclick="window.updateQty('${item.id}', 1, event)" class="w-8 h-8 rounded-full qty-btn flex items-center justify-center">
                             <i class="fas fa-plus text-xs"></i>
                         </button>
                     </div>
@@ -306,15 +373,50 @@
 
     function renderCompare() {
         const container = document.getElementById('compareGrid');
-        container.innerHTML = state.compareItems.map(item => `
-            <div class="glass-panel p-4 rounded-2xl relative group">
-                <button onclick="window.deleteCompareItem('${item.id}')" class="absolute top-3 right-3 text-red-400/70 hover:text-red-400 transition-colors">
-                    <i class="fas fa-trash"></i>
-                </button>
-                <h3 class="font-bold text-cyan-400 mb-2 pr-6">${item.name || 'ไม่มีชื่อ'}</h3>
-                <p class="text-sm text-slate-300">ราคาเฉลี่ย: <span class="text-white font-semibold text-lg">${item.price || 0}</span> บาท</p>
-            </div>
-        `).join('');
+        
+        // 1. จัดกลุ่มข้อมูลตามชื่อสินค้า
+        const groupedData = {};
+        state.compareItems.forEach(item => {
+            // รองรับโครงสร้างเก่าที่มีแค่ name ด้วย เพื่อไม่ให้ของเก่าบัค
+            const pName = item.productName || item.name || 'สินค้าไม่ได้ระบุชื่อ'; 
+            if (!groupedData[pName]) {
+                groupedData[pName] = [];
+            }
+            groupedData[pName].push(item);
+        });
+
+        // 2. สร้าง HTML สำหรับแต่ละกลุ่มสินค้า
+        let html = '';
+        for (const [productName, stores] of Object.entries(groupedData)) {
+            // เรียงลำดับราคาร้านค้าจากน้อยไปมาก
+            stores.sort((a, b) => (parseFloat(a.price) || 0) - (parseFloat(b.price) || 0));
+
+            let storeHtml = stores.map((store, index) => {
+                // ให้ร้านที่ราคาต่ำที่สุด (index 0) มีไฮไลท์สีพิเศษ
+                const isBestPrice = index === 0 && stores.length > 1; 
+                return `
+                    <div class="glass-panel p-4 rounded-2xl relative group ${isBestPrice ? 'border-green-400/50 shadow-[0_0_15px_rgba(74,222,128,0.2)]' : ''}">
+                        ${isBestPrice ? '<div class="absolute -top-3 -left-2 bg-green-500 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-lg z-10">ถูกที่สุด ⭐</div>' : ''}
+                        <button onclick="window.deleteCompareItem('${store.id}')" class="absolute top-3 right-3 text-red-400/70 hover:text-red-400 transition-colors">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                        <h3 class="font-bold text-cyan-400 mb-2 pr-6">${store.storeName || store.name || 'ไม่ระบุร้าน'}</h3>
+                        <p class="text-sm text-slate-300">ราคา: <span class="${isBestPrice ? 'text-green-400' : 'text-white'} font-semibold text-lg">${store.price || 0}</span> บาท</p>
+                    </div>
+                `;
+            }).join('');
+
+            html += `
+                <div class="w-full bg-slate-900/50 p-4 rounded-3xl border border-slate-700/50 mb-2">
+                    <h2 class="text-xl font-bold text-white mb-4 border-b border-slate-700 pb-2"><i class="fas fa-box text-cyan-500 mr-2"></i>${productName}</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        ${storeHtml}
+                    </div>
+                </div>
+            `;
+        }
+
+        container.innerHTML = html || '<p class="text-center text-slate-400 mt-10">ยังไม่มีข้อมูลเปรียบเทียบราคา</p>';
     }
 
     window.deleteCompareItem = async function(id) {
@@ -345,7 +447,8 @@
         const { value: formValues } = await Swal.fire({
             title: 'เพิ่มข้อมูลร้านค้า/ราคา',
             html: `
-                <input id="swal-compare-name" class="swal2-input mb-3" placeholder="ชื่อร้านค้า หรือ ชื่อสินค้า">
+                <input id="swal-compare-pname" class="swal2-input mb-3" placeholder="ชื่อสินค้า (เช่น แม็คโคร, น้ำตาลมิตรผล)">
+                <input id="swal-compare-sname" class="swal2-input mb-3" placeholder="ชื่อร้านค้าที่ไปสำรวจ">
                 <input id="swal-compare-price" type="number" class="swal2-input mb-3" placeholder="ราคา (บาท)">
             `,
             focusConfirm: false,
@@ -353,13 +456,19 @@
             confirmButtonText: 'บันทึก',
             cancelButtonText: 'ยกเลิก',
             preConfirm: () => {
-                const name = document.getElementById('swal-compare-name').value;
+                const pname = document.getElementById('swal-compare-pname').value;
+                const sname = document.getElementById('swal-compare-sname').value;
                 const price = document.getElementById('swal-compare-price').value;
-                if (!name) {
-                    Swal.showValidationMessage('กรุณาใส่ชื่อร้านค้าหรือสินค้า');
+                
+                if (!pname || !sname) {
+                    Swal.showValidationMessage('กรุณาใส่ชื่อสินค้าและชื่อร้านค้าให้ครบ');
                     return false;
                 }
-                return { name: name, price: parseFloat(price) || 0 }
+                return { 
+                    productName: pname, 
+                    storeName: sname, 
+                    price: parseFloat(price) || 0 
+                }
             }
         });
 
@@ -409,7 +518,6 @@
                 const urlInput = document.getElementById('swal-img-url').value;
                 let imageUrl = urlInput || ""; 
 
-                // ถ้ายูสเซอร์เลือกไฟล์ จะทำการบีบอัดแล้วเซฟตรงๆ ไม่ผ่าน Storage
                 if (file) {
                     Swal.showLoading();
                     try {
