@@ -99,7 +99,6 @@
         
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        .text-neon { text-shadow: 0 0 10px rgba(56, 189, 248, 0.6); }
     </style>
 </head>
 <body class="antialiased selection:bg-cyan-500 selection:text-white min-h-screen pb-20">
@@ -178,7 +177,6 @@
         try {
             await signInAnonymously(auth);
             setupRealtimeListeners();
-            renderTabs();
         } catch (error) {
             console.error("Auth error:", error);
             Swal.fire('Error', 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้', 'error');
@@ -243,6 +241,122 @@
         } else {
             document.getElementById('inventoryView').classList.add('hidden');
             document.getElementById('compareView').classList.remove('hidden');
-            document.getElementById('headerTitle').innerText = 'เปรียบเทียบราคา';
+            document.getElementById('headerTitle').innerText = 'MARKET DATA';
             
-            cmpBtn.className = "px-3 py-1.5 rounded-lg text-xs font-semibold border
+            cmpBtn.className = "px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all bg-cyan-500/20 text-cyan-400 border-cyan-500/50 shadow-[0_0_10px_rgba(56,189,248,0.3)]";
+            invBtn.className = "px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all text-slate-400 border-transparent hover:text-cyan-400";
+            renderCompare();
+        }
+    };
+
+    window.setCategory = function(cat) {
+        state.currentCategory = cat;
+        renderTabs();
+        render();
+    };
+
+    function renderTabs() {
+        const container = document.getElementById('categoryTabs');
+        container.innerHTML = categories.map(cat => `
+            <button onclick="window.setCategory('${cat}')" 
+                class="px-5 py-2 text-sm font-medium whitespace-nowrap ${state.currentCategory === cat ? 'tab-active' : 'tab-inactive'}">
+                ${cat}
+            </button>
+        `).join('');
+    }
+
+    window.updateQty = async function(id, change) {
+        const item = state.items.find(i => i.id === id);
+        if (!item) return;
+        
+        const newQty = Math.max(0, (item.qty || 0) + change);
+        await updateDoc(doc(db, 'artifacts', appId, 'users', userId, 'inventory', id), { qty: newQty });
+    };
+
+    function render() {
+        if (state.mode !== 'inventory') return;
+        
+        const filtered = state.currentCategory === "รวมสินค้าทั้งหมด" 
+            ? state.items 
+            : state.items.filter(i => i.category === state.currentCategory);
+
+        const container = document.getElementById('itemGrid');
+        container.innerHTML = filtered.map(item => {
+            const isLow = item.qty <= 5;
+            const bgImage = item.image && item.image.trim() !== '' ? item.image : 'https://via.placeholder.com/300x300/1e293b/94a3b8?text=No+Image';
+            return `
+            <div class="item-card rounded-2xl overflow-hidden h-48 flex flex-col justify-end ${isLow ? 'low-stock' : ''}" style="background-image: url('${bgImage}')">
+                <div class="item-overlay absolute inset-0"></div>
+                <div class="relative z-10 p-3 w-full">
+                    <h3 class="font-semibold text-white text-sm mb-1 truncate drop-shadow-md">${item.name}</h3>
+                    <div class="flex items-center justify-between mt-2">
+                        <button onclick="window.updateQty('${item.id}', -1)" class="w-8 h-8 rounded-full qty-btn flex items-center justify-center">
+                            <i class="fas fa-minus text-xs"></i>
+                        </button>
+                        <div class="text-center px-2">
+                            <span class="text-2xl font-bold ${isLow ? 'text-red-400' : 'text-cyan-400'} drop-shadow-lg">${item.qty || 0}</span>
+                        </div>
+                        <button onclick="window.updateQty('${item.id}', 1)" class="w-8 h-8 rounded-full qty-btn flex items-center justify-center">
+                            <i class="fas fa-plus text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `}).join('');
+    }
+
+    function renderCompare() {
+        const container = document.getElementById('compareGrid');
+        container.innerHTML = state.compareItems.map(item => `
+            <div class="glass-panel p-4 rounded-2xl">
+                <h3 class="font-bold text-cyan-400 mb-2">${item.name || 'ไม่มีชื่อ'}</h3>
+                <p class="text-sm text-slate-300">ราคาเฉลี่ย: ${item.price || 0} บาท</p>
+            </div>
+        `).join('');
+    }
+
+    window.addNewProductModal = async function() {
+        const { value: formValues } = await Swal.fire({
+            title: 'เพิ่มรายการใหม่',
+            html: `
+                <input id="swal-name" class="swal2-input" placeholder="ชื่อสินค้า">
+                <input id="swal-img" class="swal2-input" placeholder="URL รูปภาพ (วางลิงก์รูป)">
+                <input id="swal-qty" type="number" class="swal2-input" placeholder="จำนวนเริ่มต้น" value="1">
+                <select id="swal-cat" class="swal2-select">
+                    ${categories.filter(c => c !== 'รวมสินค้าทั้งหมด').map(c => `<option value="${c}">${c}</option>`).join('')}
+                </select>
+            `,
+            focusConfirm: false,
+            showCancelButton: true,
+            confirmButtonText: 'บันทึก',
+            cancelButtonText: 'ยกเลิก',
+            preConfirm: () => {
+                const name = document.getElementById('swal-name').value;
+                if (!name) {
+                    Swal.showValidationMessage('กรุณาใส่ชื่อสินค้า');
+                    return false;
+                }
+                return {
+                    name: name,
+                    image: document.getElementById('swal-img').value,
+                    qty: parseInt(document.getElementById('swal-qty').value) || 0,
+                    category: document.getElementById('swal-cat').value
+                }
+            }
+        });
+
+        if (formValues) {
+            try {
+                await addDoc(collection(db, 'artifacts', appId, 'users', userId, 'inventory'), formValues);
+                Swal.fire({ icon: 'success', title: 'สำเร็จ', text: 'เพิ่มสินค้าเรียบร้อยแล้ว', timer: 1500, showConfirmButton: false });
+            } catch (error) {
+                console.error(error);
+                Swal.fire('ข้อผิดพลาด', 'ไม่สามารถบันทึกข้อมูลได้', 'error');
+            }
+        }
+    };
+
+    init();
+</script>
+</body>
+</html>
