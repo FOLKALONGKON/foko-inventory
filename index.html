@@ -120,7 +120,6 @@
             </div>
             
             <div class="flex items-center space-x-4">
-                <!-- กระดิ่งแจ้งเตือน -->
                 <button id="btnNotification" onclick="window.showLowStockAlert()" class="relative p-1.5 text-slate-400 hover:text-red-400 transition-all">
                     <i class="fas fa-bell text-xl"></i>
                     <span id="notifBadge" class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold px-1.5 py-[2px] rounded-full hidden shadow-[0_0_8px_rgba(239,68,68,0.8)]">0</span>
@@ -141,12 +140,19 @@
     <main class="max-w-7xl mx-auto px-4">
         <div id="inventoryView">
             <div id="categoryTabs" class="flex space-x-2 overflow-x-auto hide-scrollbar pb-4 mb-4"></div>
-            <p class="text-xs text-slate-400 mb-4 text-center">💡 ดับเบิ้ลคลิกที่สินค้าเพื่อแก้ไขข้อมูล</p>
             <div id="itemGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"></div>
         </div>
 
         <div id="compareView" class="hidden">
-            <div id="compareGrid" class="flex flex-col gap-6"></div>
+            <!-- ช่องค้นหาสินค้า -->
+            <div class="mb-5 relative max-w-md mx-auto md:mx-0">
+                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <i class="fas fa-search text-slate-400"></i>
+                </div>
+                <input type="text" id="compareSearchInput" onkeyup="window.filterCompare()" class="w-full bg-slate-800/80 border border-cyan-500/30 text-white text-sm rounded-2xl focus:ring-cyan-500 focus:border-cyan-500 block pl-11 p-3.5 placeholder-slate-400 shadow-[0_0_15px_rgba(56,189,248,0.1)] transition-all" placeholder="ค้นหาชื่อสินค้าที่เปรียบเทียบราคา...">
+            </div>
+            
+            <div id="compareGrid" class="flex flex-col gap-5"></div>
         </div>
     </main>
 
@@ -181,7 +187,8 @@
         items: [],
         compareItems: [],
         currentCategory: "รวมสินค้าทั้งหมด",
-        mode: 'inventory'
+        mode: 'inventory',
+        compareSearchQuery: ''
     };
 
     async function init() {
@@ -198,7 +205,7 @@
         const itemsRef = collection(db, 'artifacts', appId, 'users', userId, 'inventory');
         onSnapshot(query(itemsRef), (snapshot) => {
             state.items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            window.updateNotificationBadge(); // อัปเดตกระดิ่งแจ้งเตือนทุกครั้งที่มีการเปลี่ยนข้อมูล
+            window.updateNotificationBadge();
             render();
         });
 
@@ -216,7 +223,6 @@
         });
     }
 
-    // ฟังก์ชันอัปเดตตัวเลขแจ้งเตือนบนกระดิ่ง
     window.updateNotificationBadge = function() {
         const lowStockItems = state.items.filter(item => (item.qty || 0) <= 2);
         const badge = document.getElementById('notifBadge');
@@ -234,7 +240,6 @@
         }
     };
 
-    // ฟังก์ชันแสดง Popup รายการสินค้าที่ใกล้หมด
     window.showLowStockAlert = function() {
         const lowStockItems = state.items.filter(item => (item.qty || 0) <= 2);
         if (lowStockItems.length === 0) {
@@ -307,6 +312,10 @@
             
             cmpBtn.className = "px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all bg-cyan-500/20 text-cyan-400 border-cyan-500/50 shadow-[0_0_10px_rgba(56,189,248,0.3)]";
             invBtn.className = "px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all text-slate-400 border-transparent hover:text-cyan-400";
+            
+            // รีเซ็ตคำค้นหาเมื่อเปลี่ยนหน้า
+            document.getElementById('compareSearchInput').value = '';
+            state.compareSearchQuery = '';
             renderCompare();
         }
     };
@@ -482,9 +491,16 @@
         `}).join('');
     }
 
+    // ฟังก์ชันรับค่าตอนพิมพ์ค้นหาสินค้า
+    window.filterCompare = function() {
+        state.compareSearchQuery = document.getElementById('compareSearchInput').value.trim().toLowerCase();
+        renderCompare();
+    };
+
     function renderCompare() {
         const container = document.getElementById('compareGrid');
         
+        // 1. จัดกลุ่มข้อมูล
         const groupedData = {};
         state.compareItems.forEach(item => {
             const pName = item.productName || item.name || 'สินค้าไม่ได้ระบุชื่อ'; 
@@ -494,35 +510,53 @@
             groupedData[pName].push(item);
         });
 
+        // 2. กรองข้อมูลตามที่พิมพ์ค้นหา
+        const searchTerm = state.compareSearchQuery;
+
         let html = '';
         for (const [productName, stores] of Object.entries(groupedData)) {
+            // ถ้าระบุคำค้นหา และชื่อสินค้าไม่มีคำนั้น ให้ข้ามไปไม่แสดงผล
+            if (searchTerm && !productName.toLowerCase().includes(searchTerm)) {
+                continue;
+            }
+
+            // เรียงจากน้อยไปมาก
             stores.sort((a, b) => (parseFloat(a.price) || 0) - (parseFloat(b.price) || 0));
 
             let storeHtml = stores.map((store, index) => {
                 const isBestPrice = index === 0 && stores.length > 1; 
+                
+                // รูปแบบช่องเล็กๆ สำหรับแสดงชื่อร้านค้าและราคา
                 return `
-                    <div class="glass-panel p-4 rounded-2xl relative group ${isBestPrice ? 'border-green-400/50 shadow-[0_0_15px_rgba(74,222,128,0.2)]' : ''}">
-                        ${isBestPrice ? '<div class="absolute -top-3 -left-2 bg-green-500 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-lg z-10">ถูกที่สุด ⭐</div>' : ''}
-                        <button onclick="window.deleteCompareItem('${store.id}')" class="absolute top-3 right-3 text-red-400/70 hover:text-red-400 transition-colors">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                        <h3 class="font-bold text-cyan-400 mb-2 pr-6">${store.storeName || store.name || 'ไม่ระบุร้าน'}</h3>
-                        <p class="text-sm text-slate-300">ราคา: <span class="${isBestPrice ? 'text-green-400' : 'text-white'} font-semibold text-lg">${store.price || 0}</span> บาท</p>
+                    <div class="flex items-center justify-between p-3 mb-2 rounded-xl border ${isBestPrice ? 'bg-green-500/10 border-green-500/50' : 'bg-slate-800/60 border-slate-700/50'} transition-all hover:border-cyan-500/30">
+                        <div class="flex items-center gap-3">
+                            ${isBestPrice ? '<span class="text-green-400 text-lg"><i class="fas fa-medal"></i></span>' : '<span class="text-slate-500"><i class="fas fa-store"></i></span>'}
+                            <span class="font-medium text-sm md:text-base ${isBestPrice ? 'text-green-400' : 'text-slate-300'}">${store.storeName || store.name || 'ไม่ระบุร้าน'}</span>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <span class="font-bold text-lg md:text-xl ${isBestPrice ? 'text-green-400' : 'text-white'}">${store.price || 0} <span class="text-xs font-normal text-slate-400">บาท</span></span>
+                            <button onclick="window.deleteCompareItem('${store.id}')" class="text-slate-500 hover:text-red-400 transition-colors bg-slate-900 w-8 h-8 rounded-full flex items-center justify-center">
+                                <i class="fas fa-trash text-xs"></i>
+                            </button>
+                        </div>
                     </div>
                 `;
             }).join('');
 
+            // รูปแบบกรอบใหญ่ครอบสินค้าแต่ละประเภท
             html += `
-                <div class="w-full bg-slate-900/50 p-4 rounded-3xl border border-slate-700/50 mb-2">
-                    <h2 class="text-xl font-bold text-white mb-4 border-b border-slate-700 pb-2"><i class="fas fa-box text-cyan-500 mr-2"></i> ${productName}</h2>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div class="glass-panel p-5 rounded-2xl w-full">
+                    <h2 class="text-lg md:text-xl font-bold text-cyan-400 mb-4 flex items-center gap-2">
+                        <i class="fas fa-box"></i> ${productName}
+                    </h2>
+                    <div class="flex flex-col">
                         ${storeHtml}
                     </div>
                 </div>
             `;
         }
 
-        container.innerHTML = html || '<p class="text-center text-slate-400 mt-10">ยังไม่มีข้อมูลเปรียบเทียบราคา</p>';
+        container.innerHTML = html || '<div class="text-center text-slate-400 mt-10 p-8 glass-panel rounded-2xl"><i class="fas fa-search text-3xl mb-3 text-slate-500"></i><p>ไม่พบข้อมูลสินค้านี้</p></div>';
     }
 
     window.deleteCompareItem = async function(id) {
