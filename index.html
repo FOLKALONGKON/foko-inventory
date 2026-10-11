@@ -681,6 +681,9 @@
     };
 
     window.addNewProductModal = async function() {
+        // เช็คว่าปัจจุบันอยู่หมวดหมู่ไหน ถ้าอยู่หน้ารวมให้ค่าเริ่มต้นเป็นหมวดหมู่แรก
+        let defaultCat = state.currentCategory === "รวมสินค้าทั้งหมด" ? categories[1] : state.currentCategory;
+
         const { value: formValues } = await Swal.fire({
             title: 'เพิ่มรายการใหม่',
             html: `
@@ -691,19 +694,26 @@
                     <p id="upload-text" class="text-sm text-slate-300">คลิกเพื่อเลือกรูปภาพ</p>
                     <input type="file" id="swal-img-file" class="hidden" accept="image/*" onchange="document.getElementById('upload-text').innerText = this.files[0] ? 'เลือกไฟล์: ' + this.files[0].name : 'คลิกเพื่อเลือกรูปภาพ'">
                 </div>
-                
-                <div class="text-center text-xs text-slate-400 mb-1">- หรือใช้วิธีวางลิงก์ -</div>
-                <input id="swal-img-url" class="swal2-input mb-3" placeholder="วางลิงก์รูปภาพ (ถ้ามี)">
 
                 <input id="swal-qty" type="number" class="swal2-input mb-3" placeholder="จำนวนเริ่มต้น" value="1">
+                
                 <select id="swal-cat" class="swal2-select">
-                    ${categories.filter(c => c !== 'รวมสินค้าทั้งหมด').map(c => `<option value="${c}">${c}</option>`).join('')}
+                    ${categories.filter(c => c !== 'รวมสินค้าทั้งหมด').map(c => `<option value="${c}" ${c === defaultCat ? 'selected' : ''}>${c}</option>`).join('')}
                 </select>
             `,
             focusConfirm: false,
             showCancelButton: true,
             confirmButtonText: 'บันทึก',
             cancelButtonText: 'ยกเลิก',
+            // เพิ่มการกด Enter เพื่อบันทึก
+            didOpen: () => {
+                const popup = Swal.getPopup();
+                popup.addEventListener('keyup', (e) => {
+                    if (e.key === 'Enter') {
+                        Swal.clickConfirm();
+                    }
+                });
+            },
             preConfirm: async () => {
                 const name = document.getElementById('swal-name').value;
                 if (!name) {
@@ -713,8 +723,7 @@
 
                 const fileInput = document.getElementById('swal-img-file');
                 const file = fileInput.files[0];
-                const urlInput = document.getElementById('swal-img-url').value;
-                let imageUrl = urlInput || ""; 
+                let imageUrl = ""; 
 
                 if (file) {
                     Swal.showLoading();
