@@ -139,6 +139,14 @@
 
     <main class="max-w-7xl mx-auto px-4">
         <div id="inventoryView">
+            <!-- เพิ่มช่องค้นหาสินค้าในคลัง -->
+            <div class="mb-5 relative max-w-md mx-auto md:mx-0">
+                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <i class="fas fa-search text-slate-400"></i>
+                </div>
+                <input type="text" id="inventorySearchInput" onkeyup="window.filterInventory()" class="w-full bg-slate-800/80 border border-cyan-500/30 text-white text-sm rounded-2xl focus:ring-cyan-500 focus:border-cyan-500 block pl-11 p-3.5 placeholder-slate-400 shadow-[0_0_15px_rgba(56,189,248,0.1)] transition-all" placeholder="ค้นหาชื่อสินค้าในคลัง (เพื่อแก้ไขจำนวน)...">
+            </div>
+
             <div id="categoryTabs" class="flex space-x-2 overflow-x-auto hide-scrollbar pb-4 mb-4"></div>
             <div id="itemGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"></div>
         </div>
@@ -154,7 +162,6 @@
             
             <p class="text-xs text-slate-400 mb-4 text-center">💡 ดับเบิ้ลคลิกที่รายการร้านค้าด้านล่างเพื่อแก้ไขราคา</p>
             
-            <!-- ปรับ Grid ของกล่องให้สั้นลงโดยแบ่งเป็น 2 คอลัมน์บนจอคอม -->
             <div id="compareGrid" class="grid grid-cols-1 md:grid-cols-2 gap-5"></div>
         </div>
     </main>
@@ -191,7 +198,8 @@
         compareItems: [],
         currentCategory: "รวมสินค้าทั้งหมด",
         mode: 'inventory',
-        compareSearchQuery: ''
+        compareSearchQuery: '',
+        inventorySearchQuery: '' // เพิ่ม state สำหรับการค้นหาในหน้าคลังสินค้า
     };
 
     async function init() {
@@ -338,6 +346,12 @@
         `).join('');
     }
 
+    // ฟังก์ชันสำหรับกรองข้อมูลเมื่อพิมพ์ค้นหาในหน้า Inventory
+    window.filterInventory = function() {
+        state.inventorySearchQuery = document.getElementById('inventorySearchInput').value.trim().toLowerCase();
+        render();
+    };
+
     window.updateQty = async function(id, change, event) {
         if(event) event.stopPropagation(); 
         const item = state.items.find(i => i.id === id);
@@ -378,9 +392,6 @@
                     <p id="edit-upload-text" class="text-sm text-slate-300">คลิกเพื่อเลือกรูปภาพใหม่</p>
                     <input type="file" id="swal-edit-img-file" class="hidden" accept="image/*" onchange="document.getElementById('edit-upload-text').innerText = this.files[0] ? 'เลือกไฟล์: ' + this.files[0].name : 'คลิกเพื่อเลือกรูปภาพใหม่'">
                 </div>
-
-                <div class="text-center text-xs text-slate-400 mb-1">- หรือใช้วิธีวางลิงก์ -</div>
-                <input id="swal-edit-img-url" class="swal2-input mb-3" placeholder="วางลิงก์รูปภาพ (ถ้ามี)" value="${item.image || ''}">
                 
                 <select id="swal-edit-cat" class="swal2-select mb-3">
                     ${categories.filter(c => c !== 'รวมสินค้าทั้งหมด').map(c => `<option value="${c}" ${item.category === c ? 'selected' : ''}>${c}</option>`).join('')}
@@ -399,8 +410,7 @@
 
                 const fileInput = document.getElementById('swal-edit-img-file');
                 const file = fileInput.files[0];
-                const urlInput = document.getElementById('swal-edit-img-url').value;
-                let imageUrl = urlInput; 
+                let imageUrl = item.image; // ใช้รูปเดิมถ้าไม่ได้อัปโหลดใหม่
 
                 if (file) {
                     Swal.showLoading();
@@ -461,9 +471,14 @@
     function render() {
         if (state.mode !== 'inventory') return;
         
-        const filtered = state.currentCategory === "รวมสินค้าทั้งหมด" 
+        let filtered = state.currentCategory === "รวมสินค้าทั้งหมด" 
             ? state.items 
             : state.items.filter(i => i.category === state.currentCategory);
+
+        // นำค่าที่ค้นหามากรองข้อมูลอีกชั้นหนึ่ง
+        if (state.inventorySearchQuery) {
+            filtered = filtered.filter(i => (i.name || '').toLowerCase().includes(state.inventorySearchQuery));
+        }
 
         const container = document.getElementById('itemGrid');
         container.innerHTML = filtered.map(item => {
@@ -491,6 +506,10 @@
                 </div>
             </div>
         `}).join('');
+
+        if(filtered.length === 0 && state.inventorySearchQuery !== '') {
+            container.innerHTML = '<div class="col-span-full text-center text-slate-400 mt-10 p-8 glass-panel rounded-2xl"><i class="fas fa-search text-3xl mb-3 text-slate-500"></i><p>ไม่พบสินค้าที่คุณค้นหา</p></div>';
+        }
     }
 
     window.filterCompare = function() {
@@ -681,7 +700,7 @@
     };
 
     window.addNewProductModal = async function() {
-        // เช็คว่าปัจจุบันอยู่หมวดหมู่ไหน ถ้าอยู่หน้ารวมให้ค่าเริ่มต้นเป็นหมวดหมู่แรก
+        // เลือกว่าสินค้านั้นอยู่ในหมวดหมู่ที่เปิดอยู่ (ถ้าอยู่หน้ารวมทั้งหมด ให้เป็นบิงซู)
         let defaultCat = state.currentCategory === "รวมสินค้าทั้งหมด" ? categories[1] : state.currentCategory;
 
         const { value: formValues } = await Swal.fire({
