@@ -118,13 +118,22 @@
                     </span>
                 </div>
             </div>
-            <div class="flex items-center space-x-2">
-                <button id="btnInventory" onclick="window.switchMode('inventory')" class="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all bg-cyan-500/20 text-cyan-400 border-cyan-500/50 shadow-[0_0_10px_rgba(56,189,248,0.3)]">
-                    <i class="fas fa-boxes-stacked mr-1"></i> INVENTORY
+            
+            <div class="flex items-center space-x-4">
+                <!-- กระดิ่งแจ้งเตือน -->
+                <button id="btnNotification" onclick="window.showLowStockAlert()" class="relative p-1.5 text-slate-400 hover:text-red-400 transition-all">
+                    <i class="fas fa-bell text-xl"></i>
+                    <span id="notifBadge" class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold px-1.5 py-[2px] rounded-full hidden shadow-[0_0_8px_rgba(239,68,68,0.8)]">0</span>
                 </button>
-                <button id="btnCompare" onclick="window.switchMode('compare')" class="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all text-slate-400 border-transparent hover:text-cyan-400">
-                    <i class="fas fa-store mr-1"></i> MARKET
-                </button>
+                
+                <div class="flex items-center space-x-2 border-l border-slate-700/50 pl-4">
+                    <button id="btnInventory" onclick="window.switchMode('inventory')" class="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all bg-cyan-500/20 text-cyan-400 border-cyan-500/50 shadow-[0_0_10px_rgba(56,189,248,0.3)]">
+                        <i class="fas fa-boxes-stacked mr-1"></i> INVENTORY
+                    </button>
+                    <button id="btnCompare" onclick="window.switchMode('compare')" class="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all text-slate-400 border-transparent hover:text-cyan-400">
+                        <i class="fas fa-store mr-1"></i> MARKET
+                    </button>
+                </div>
             </div>
         </div>
     </header>
@@ -189,6 +198,7 @@
         const itemsRef = collection(db, 'artifacts', appId, 'users', userId, 'inventory');
         onSnapshot(query(itemsRef), (snapshot) => {
             state.items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            window.updateNotificationBadge(); // อัปเดตกระดิ่งแจ้งเตือนทุกครั้งที่มีการเปลี่ยนข้อมูล
             render();
         });
 
@@ -205,6 +215,56 @@
              renderTabs();
         });
     }
+
+    // ฟังก์ชันอัปเดตตัวเลขแจ้งเตือนบนกระดิ่ง
+    window.updateNotificationBadge = function() {
+        const lowStockItems = state.items.filter(item => (item.qty || 0) <= 2);
+        const badge = document.getElementById('notifBadge');
+        const bellIcon = document.getElementById('btnNotification');
+        
+        if (lowStockItems.length > 0) {
+            badge.innerText = lowStockItems.length;
+            badge.classList.remove('hidden');
+            bellIcon.classList.add('text-red-400', 'animate-pulse');
+            bellIcon.classList.remove('text-slate-400');
+        } else {
+            badge.classList.add('hidden');
+            bellIcon.classList.remove('text-red-400', 'animate-pulse');
+            bellIcon.classList.add('text-slate-400');
+        }
+    };
+
+    // ฟังก์ชันแสดง Popup รายการสินค้าที่ใกล้หมด
+    window.showLowStockAlert = function() {
+        const lowStockItems = state.items.filter(item => (item.qty || 0) <= 2);
+        if (lowStockItems.length === 0) {
+            Swal.fire({
+                icon: 'success',
+                title: 'สถานะปกติ',
+                text: 'ไม่มีสินค้าที่เหลือน้อยกว่า 3 ชิ้น',
+                background: '#0f172a',
+                color: '#f8fafc',
+                confirmButtonColor: '#0ea5e9'
+            });
+            return;
+        }
+        
+        const itemList = lowStockItems.map(item => `
+            <div class="flex justify-between items-center border-b border-slate-700/50 py-3">
+                <span class="text-white text-sm"><i class="fas fa-box text-slate-400 mr-2"></i> ${item.name}</span>
+                <span class="text-red-400 font-bold bg-red-500/10 px-2 py-1 rounded-lg">${item.qty || 0} ชิ้น</span>
+            </div>
+        `).join('');
+
+        Swal.fire({
+            title: '⚠️ สินค้าใกล้หมด',
+            html: `<div class="text-left max-h-64 overflow-y-auto pr-2 mt-2">${itemList}</div>`,
+            background: '#0f172a',
+            color: '#f8fafc',
+            confirmButtonColor: '#0ea5e9',
+            confirmButtonText: 'ปิด'
+        });
+    };
 
     window.switchMode = async function(mode) {
         if (mode === 'compare' && state.mode !== 'compare') {
@@ -396,7 +456,7 @@
 
         const container = document.getElementById('itemGrid');
         container.innerHTML = filtered.map(item => {
-            const isLow = item.qty <= 5;
+            const isLow = item.qty <= 2;
             const bgImage = item.image && item.image.trim() !== '' ? item.image : 'https://via.placeholder.com/300x300/1e293b/94a3b8?text=No+Image';
             return `
             <div class="item-card rounded-2xl overflow-hidden h-48 flex flex-col justify-end ${isLow ? 'low-stock' : ''}" style="background-image: url('${bgImage}')" ondblclick="window.editProductModal('${item.id}')">
@@ -454,7 +514,7 @@
 
             html += `
                 <div class="w-full bg-slate-900/50 p-4 rounded-3xl border border-slate-700/50 mb-2">
-                    <h2 class="text-xl font-bold text-white mb-4 border-b border-slate-700 pb-2"><i class="fas fa-box text-cyan-500 mr-2"></i>${productName}</h2>
+                    <h2 class="text-xl font-bold text-white mb-4 border-b border-slate-700 pb-2"><i class="fas fa-box text-cyan-500 mr-2"></i> ${productName}</h2>
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         ${storeHtml}
                     </div>
