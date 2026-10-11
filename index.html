@@ -15,7 +15,7 @@
             background: linear-gradient(135deg, #090B14 0%, #0F172A 50%, #020617 100%);
             background-attachment: fixed;
             color: #e2e8f0;
-            user-select: none; /* ป้องกันการคลุมดำตอนดับเบิ้ลคลิก */
+            user-select: none;
         }
 
         .glass-panel {
@@ -268,7 +268,7 @@
     }
 
     window.updateQty = async function(id, change, event) {
-        if(event) event.stopPropagation(); // ป้องกันการติด Event Double Click
+        if(event) event.stopPropagation(); 
         const item = state.items.find(i => i.id === id);
         if (!item) return;
         
@@ -277,7 +277,7 @@
     };
 
     window.deleteProduct = async function(id, event) {
-        if(event) event.stopPropagation(); // ป้องกันการติด Event Double Click
+        if(event) event.stopPropagation(); 
         const result = await Swal.fire({
             title: 'ยืนยันการลบ?',
             text: "คุณต้องการลบสินค้านี้ใช่หรือไม่",
@@ -301,8 +301,16 @@
             title: 'แก้ไขสินค้า',
             html: `
                 <input id="swal-edit-name" class="swal2-input mb-3" placeholder="ชื่อสินค้า" value="${item.name || ''}">
-                <div class="text-center text-xs text-slate-400 mb-1">ลิงก์รูปภาพเดิม / วางลิงก์ใหม่</div>
-                <input id="swal-edit-img-url" class="swal2-input mb-3" placeholder="วางลิงก์รูปภาพ (Base64/URL)" value="${item.image || ''}">
+                
+                <div class="mb-3 border-2 border-dashed border-cyan-500/50 rounded-xl p-4 text-center cursor-pointer hover:bg-cyan-500/10 transition-colors" onclick="document.getElementById('swal-edit-img-file').click()">
+                    <i class="fas fa-camera text-2xl text-cyan-400 mb-2"></i>
+                    <p id="edit-upload-text" class="text-sm text-slate-300">คลิกเพื่อเลือกรูปภาพใหม่</p>
+                    <input type="file" id="swal-edit-img-file" class="hidden" accept="image/*" onchange="document.getElementById('edit-upload-text').innerText = this.files[0] ? 'เลือกไฟล์: ' + this.files[0].name : 'คลิกเพื่อเลือกรูปภาพใหม่'">
+                </div>
+
+                <div class="text-center text-xs text-slate-400 mb-1">- หรือใช้วิธีวางลิงก์ -</div>
+                <input id="swal-edit-img-url" class="swal2-input mb-3" placeholder="วางลิงก์รูปภาพ (ถ้ามี)" value="${item.image || ''}">
+                
                 <select id="swal-edit-cat" class="swal2-select mb-3">
                     ${categories.filter(c => c !== 'รวมสินค้าทั้งหมด').map(c => `<option value="${c}" ${item.category === c ? 'selected' : ''}>${c}</option>`).join('')}
                 </select>
@@ -311,15 +319,58 @@
             showCancelButton: true,
             confirmButtonText: 'บันทึกการแก้ไข',
             cancelButtonText: 'ยกเลิก',
-            preConfirm: () => {
+            preConfirm: async () => {
                 const name = document.getElementById('swal-edit-name').value;
                 if (!name) {
                     Swal.showValidationMessage('กรุณาใส่ชื่อสินค้า');
                     return false;
                 }
+
+                const fileInput = document.getElementById('swal-edit-img-file');
+                const file = fileInput.files[0];
+                const urlInput = document.getElementById('swal-edit-img-url').value;
+                let imageUrl = urlInput; 
+
+                if (file) {
+                    Swal.showLoading();
+                    try {
+                        imageUrl = await new Promise((resolve, reject) => {
+                            const reader = new FileReader();
+                            reader.onload = (e) => {
+                                const img = new Image();
+                                img.onload = () => {
+                                    const canvas = document.createElement('canvas');
+                                    const MAX_SIZE = 300; 
+                                    let width = img.width;
+                                    let height = img.height;
+                                    
+                                    if (width > height) {
+                                        if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; }
+                                    } else {
+                                        if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; }
+                                    }
+                                    
+                                    canvas.width = width;
+                                    canvas.height = height;
+                                    const ctx = canvas.getContext('2d');
+                                    ctx.drawImage(img, 0, 0, width, height);
+                                    resolve(canvas.toDataURL('image/jpeg', 0.7)); 
+                                };
+                                img.onerror = reject;
+                                img.src = e.target.result;
+                            };
+                            reader.onerror = reject;
+                            reader.readAsDataURL(file);
+                        });
+                    } catch (error) {
+                        Swal.showValidationMessage('ประมวลผลรูปภาพไม่สำเร็จ');
+                        return false;
+                    }
+                }
+
                 return {
                     name: name,
-                    image: document.getElementById('swal-edit-img-url').value,
+                    image: imageUrl,
                     category: document.getElementById('swal-edit-cat').value
                 }
             }
@@ -374,10 +425,8 @@
     function renderCompare() {
         const container = document.getElementById('compareGrid');
         
-        // 1. จัดกลุ่มข้อมูลตามชื่อสินค้า
         const groupedData = {};
         state.compareItems.forEach(item => {
-            // รองรับโครงสร้างเก่าที่มีแค่ name ด้วย เพื่อไม่ให้ของเก่าบัค
             const pName = item.productName || item.name || 'สินค้าไม่ได้ระบุชื่อ'; 
             if (!groupedData[pName]) {
                 groupedData[pName] = [];
@@ -385,14 +434,11 @@
             groupedData[pName].push(item);
         });
 
-        // 2. สร้าง HTML สำหรับแต่ละกลุ่มสินค้า
         let html = '';
         for (const [productName, stores] of Object.entries(groupedData)) {
-            // เรียงลำดับราคาร้านค้าจากน้อยไปมาก
             stores.sort((a, b) => (parseFloat(a.price) || 0) - (parseFloat(b.price) || 0));
 
             let storeHtml = stores.map((store, index) => {
-                // ให้ร้านที่ราคาต่ำที่สุด (index 0) มีไฮไลท์สีพิเศษ
                 const isBestPrice = index === 0 && stores.length > 1; 
                 return `
                     <div class="glass-panel p-4 rounded-2xl relative group ${isBestPrice ? 'border-green-400/50 shadow-[0_0_15px_rgba(74,222,128,0.2)]' : ''}">
@@ -489,12 +535,13 @@
             html: `
                 <input id="swal-name" class="swal2-input mb-3" placeholder="ชื่อสินค้า">
                 
-                <div class="text-left px-5 mb-1">
-                    <label class="text-sm text-slate-300 block mb-2">อัปโหลดรูปภาพสินค้า (โหลดไวทันที):</label>
-                    <input type="file" id="swal-img-file" class="w-full text-sm text-slate-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-cyan-500/20 file:text-cyan-400 hover:file:bg-cyan-500/30 cursor-pointer" accept="image/*">
+                <div class="mb-3 border-2 border-dashed border-cyan-500/50 rounded-xl p-4 text-center cursor-pointer hover:bg-cyan-500/10 transition-colors" onclick="document.getElementById('swal-img-file').click()">
+                    <i class="fas fa-camera text-2xl text-cyan-400 mb-2"></i>
+                    <p id="upload-text" class="text-sm text-slate-300">คลิกเพื่อเลือกรูปภาพ</p>
+                    <input type="file" id="swal-img-file" class="hidden" accept="image/*" onchange="document.getElementById('upload-text').innerText = this.files[0] ? 'เลือกไฟล์: ' + this.files[0].name : 'คลิกเพื่อเลือกรูปภาพ'">
                 </div>
                 
-                <div class="text-center text-xs text-slate-400 mb-1">- หรือ -</div>
+                <div class="text-center text-xs text-slate-400 mb-1">- หรือใช้วิธีวางลิงก์ -</div>
                 <input id="swal-img-url" class="swal2-input mb-3" placeholder="วางลิงก์รูปภาพ (ถ้ามี)">
 
                 <input id="swal-qty" type="number" class="swal2-input mb-3" placeholder="จำนวนเริ่มต้น" value="1">
