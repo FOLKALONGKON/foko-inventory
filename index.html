@@ -152,7 +152,10 @@
                 <input type="text" id="compareSearchInput" onkeyup="window.filterCompare()" class="w-full bg-slate-800/80 border border-cyan-500/30 text-white text-sm rounded-2xl focus:ring-cyan-500 focus:border-cyan-500 block pl-11 p-3.5 placeholder-slate-400 shadow-[0_0_15px_rgba(56,189,248,0.1)] transition-all" placeholder="ค้นหาชื่อสินค้าที่เปรียบเทียบราคา...">
             </div>
             
-            <div id="compareGrid" class="flex flex-col gap-5"></div>
+            <p class="text-xs text-slate-400 mb-4 text-center">💡 ดับเบิ้ลคลิกที่รายการร้านค้าด้านล่างเพื่อแก้ไขราคา</p>
+            
+            <!-- ปรับ Grid ของกล่องให้สั้นลงโดยแบ่งเป็น 2 คอลัมน์บนจอคอม -->
+            <div id="compareGrid" class="grid grid-cols-1 md:grid-cols-2 gap-5"></div>
         </div>
     </main>
 
@@ -313,7 +316,6 @@
             cmpBtn.className = "px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all bg-cyan-500/20 text-cyan-400 border-cyan-500/50 shadow-[0_0_10px_rgba(56,189,248,0.3)]";
             invBtn.className = "px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all text-slate-400 border-transparent hover:text-cyan-400";
             
-            // รีเซ็ตคำค้นหาเมื่อเปลี่ยนหน้า
             document.getElementById('compareSearchInput').value = '';
             state.compareSearchQuery = '';
             renderCompare();
@@ -491,7 +493,6 @@
         `}).join('');
     }
 
-    // ฟังก์ชันรับค่าตอนพิมพ์ค้นหาสินค้า
     window.filterCompare = function() {
         state.compareSearchQuery = document.getElementById('compareSearchInput').value.trim().toLowerCase();
         renderCompare();
@@ -500,7 +501,6 @@
     function renderCompare() {
         const container = document.getElementById('compareGrid');
         
-        // 1. จัดกลุ่มข้อมูล
         const groupedData = {};
         state.compareItems.forEach(item => {
             const pName = item.productName || item.name || 'สินค้าไม่ได้ระบุชื่อ'; 
@@ -510,32 +510,28 @@
             groupedData[pName].push(item);
         });
 
-        // 2. กรองข้อมูลตามที่พิมพ์ค้นหา
         const searchTerm = state.compareSearchQuery;
 
         let html = '';
         for (const [productName, stores] of Object.entries(groupedData)) {
-            // ถ้าระบุคำค้นหา และชื่อสินค้าไม่มีคำนั้น ให้ข้ามไปไม่แสดงผล
             if (searchTerm && !productName.toLowerCase().includes(searchTerm)) {
                 continue;
             }
 
-            // เรียงจากน้อยไปมาก
             stores.sort((a, b) => (parseFloat(a.price) || 0) - (parseFloat(b.price) || 0));
 
             let storeHtml = stores.map((store, index) => {
                 const isBestPrice = index === 0 && stores.length > 1; 
                 
-                // รูปแบบช่องเล็กๆ สำหรับแสดงชื่อร้านค้าและราคา
                 return `
-                    <div class="flex items-center justify-between p-3 mb-2 rounded-xl border ${isBestPrice ? 'bg-green-500/10 border-green-500/50' : 'bg-slate-800/60 border-slate-700/50'} transition-all hover:border-cyan-500/30">
+                    <div ondblclick="window.editCompareItem('${store.id}')" class="flex items-center justify-between p-3 mb-2 rounded-xl border ${isBestPrice ? 'bg-green-500/10 border-green-500/50' : 'bg-slate-800/60 border-slate-700/50'} transition-all hover:border-cyan-500/30 cursor-pointer">
                         <div class="flex items-center gap-3">
                             ${isBestPrice ? '<span class="text-green-400 text-lg"><i class="fas fa-medal"></i></span>' : '<span class="text-slate-500"><i class="fas fa-store"></i></span>'}
                             <span class="font-medium text-sm md:text-base ${isBestPrice ? 'text-green-400' : 'text-slate-300'}">${store.storeName || store.name || 'ไม่ระบุร้าน'}</span>
                         </div>
                         <div class="flex items-center gap-4">
                             <span class="font-bold text-lg md:text-xl ${isBestPrice ? 'text-green-400' : 'text-white'}">${store.price || 0} <span class="text-xs font-normal text-slate-400">บาท</span></span>
-                            <button onclick="window.deleteCompareItem('${store.id}')" class="text-slate-500 hover:text-red-400 transition-colors bg-slate-900 w-8 h-8 rounded-full flex items-center justify-center">
+                            <button onclick="window.deleteCompareItem('${store.id}', event)" class="text-slate-500 hover:text-red-400 transition-colors bg-slate-900 w-8 h-8 rounded-full flex items-center justify-center">
                                 <i class="fas fa-trash text-xs"></i>
                             </button>
                         </div>
@@ -543,7 +539,6 @@
                 `;
             }).join('');
 
-            // รูปแบบกรอบใหญ่ครอบสินค้าแต่ละประเภท
             html += `
                 <div class="glass-panel p-5 rounded-2xl w-full">
                     <h2 class="text-lg md:text-xl font-bold text-cyan-400 mb-4 flex items-center gap-2">
@@ -559,7 +554,60 @@
         container.innerHTML = html || '<div class="text-center text-slate-400 mt-10 p-8 glass-panel rounded-2xl"><i class="fas fa-search text-3xl mb-3 text-slate-500"></i><p>ไม่พบข้อมูลสินค้านี้</p></div>';
     }
 
-    window.deleteCompareItem = async function(id) {
+    window.editCompareItem = async function(id) {
+        const item = state.compareItems.find(i => i.id === id);
+        if(!item) return;
+
+        const products = [...new Set(state.compareItems.map(i => i.productName || i.name).filter(Boolean))];
+        const stores = [...new Set(state.compareItems.map(i => i.storeName).filter(Boolean))];
+
+        const productOpts = products.map(p => `<option value="${p}"></option>`).join('');
+        const storeOpts = stores.map(s => `<option value="${s}"></option>`).join('');
+
+        const { value: formValues } = await Swal.fire({
+            title: 'แก้ไขข้อมูลราคา',
+            html: `
+                <datalist id="dl-products">${productOpts}</datalist>
+                <datalist id="dl-stores">${storeOpts}</datalist>
+                
+                <input id="swal-edit-c-pname" list="dl-products" class="swal2-input mb-3" placeholder="ชื่อสินค้า" value="${item.productName || item.name || ''}">
+                <input id="swal-edit-c-sname" list="dl-stores" class="swal2-input mb-3" placeholder="ชื่อร้านค้า" value="${item.storeName || ''}">
+                <input id="swal-edit-c-price" type="number" class="swal2-input mb-3" placeholder="ราคา (บาท)" value="${item.price || 0}">
+            `,
+            focusConfirm: false,
+            showCancelButton: true,
+            confirmButtonText: 'บันทึก',
+            cancelButtonText: 'ยกเลิก',
+            preConfirm: () => {
+                const pname = document.getElementById('swal-edit-c-pname').value;
+                const sname = document.getElementById('swal-edit-c-sname').value;
+                const price = document.getElementById('swal-edit-c-price').value;
+                
+                if (!pname || !sname) {
+                    Swal.showValidationMessage('กรุณาใส่ชื่อสินค้าและชื่อร้านค้าให้ครบ');
+                    return false;
+                }
+                return { 
+                    productName: pname, 
+                    storeName: sname, 
+                    price: parseFloat(price) || 0 
+                }
+            }
+        });
+
+        if (formValues) {
+            try {
+                await updateDoc(doc(db, 'artifacts', appId, 'users', userId, 'compare', id), formValues);
+                Swal.fire({ icon: 'success', title: 'สำเร็จ', text: 'แก้ไขข้อมูลเรียบร้อยแล้ว', timer: 1500, showConfirmButton: false });
+            } catch (error) {
+                console.error(error);
+                Swal.fire('ข้อผิดพลาด', 'ไม่สามารถบันทึกข้อมูลได้', 'error');
+            }
+        }
+    };
+
+    window.deleteCompareItem = async function(id, event) {
+        if(event) event.stopPropagation();
         const result = await Swal.fire({
             title: 'ยืนยันการลบ?',
             text: "คุณต้องการลบข้อมูลร้านค้านี้ใช่หรือไม่",
@@ -584,11 +632,20 @@
     };
 
     window.addCompareModal = async function() {
+        const products = [...new Set(state.compareItems.map(i => i.productName || i.name).filter(Boolean))];
+        const stores = [...new Set(state.compareItems.map(i => i.storeName).filter(Boolean))];
+
+        const productOpts = products.map(p => `<option value="${p}"></option>`).join('');
+        const storeOpts = stores.map(s => `<option value="${s}"></option>`).join('');
+
         const { value: formValues } = await Swal.fire({
             title: 'เพิ่มข้อมูลร้านค้า/ราคา',
             html: `
-                <input id="swal-compare-pname" class="swal2-input mb-3" placeholder="ชื่อสินค้า (เช่น แม็คโคร, น้ำตาลมิตรผล)">
-                <input id="swal-compare-sname" class="swal2-input mb-3" placeholder="ชื่อร้านค้าที่ไปสำรวจ">
+                <datalist id="dl-products-add">${productOpts}</datalist>
+                <datalist id="dl-stores-add">${storeOpts}</datalist>
+
+                <input id="swal-compare-pname" list="dl-products-add" class="swal2-input mb-3" placeholder="ชื่อสินค้า (พิมพ์หรือเลือกรายชื่อเดิม)">
+                <input id="swal-compare-sname" list="dl-stores-add" class="swal2-input mb-3" placeholder="ชื่อร้านค้า (พิมพ์หรือเลือกรายชื่อเดิม)">
                 <input id="swal-compare-price" type="number" class="swal2-input mb-3" placeholder="ราคา (บาท)">
             `,
             focusConfirm: false,
