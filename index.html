@@ -12,13 +12,11 @@
         
         body { 
             font-family: 'Sarabun', sans-serif; 
-            /* พื้นหลังไล่สีโทนดำ-น้ำเงินล้ำสมัย */
             background: linear-gradient(135deg, #090B14 0%, #0F172A 50%, #020617 100%);
             background-attachment: fixed;
             color: #e2e8f0;
         }
 
-        /* Glassmorphism Classes สำหรับพื้นผิวต่างๆ */
         .glass-panel {
             background: rgba(15, 23, 42, 0.6);
             backdrop-filter: blur(12px);
@@ -33,10 +31,9 @@
             border-bottom: 1px solid rgba(56, 189, 248, 0.2);
         }
 
-        /* Tabs (หมวดหมู่) */
         .tab-active { 
             background: rgba(56, 189, 248, 0.15); 
-            color: #38bdf8; /* สีฟ้านีออน */
+            color: #38bdf8; 
             border: 1px solid rgba(56, 189, 248, 0.5);
             box-shadow: 0 0 10px rgba(56, 189, 248, 0.2);
             border-radius: 9999px; 
@@ -54,7 +51,6 @@
             border: 1px solid rgba(148, 163, 184, 0.3);
         }
 
-        /* การ์ดสินค้า (Item Cards) */
         .item-card { 
             background-size: cover; 
             background-position: center; 
@@ -69,12 +65,10 @@
             border-color: rgba(56, 189, 248, 0.5);
             z-index: 10;
         }
-        /* เงาดำซ้อนทับรูปภาพให้ตัวหนังสือชัดเจน */
         .item-overlay { 
             background: linear-gradient(to top, rgba(2, 6, 23, 0.95) 0%, rgba(15, 23, 42, 0.7) 40%, rgba(15, 23, 42, 0.2) 100%); 
         }
         
-        /* สินค้าใกล้หมด (Low Stock Glow) */
         .low-stock { 
             border: 1px solid #ef4444; 
             box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
@@ -86,7 +80,6 @@
             100% { box-shadow: 0 0 10px rgba(239, 68, 68, 0.3); }
         }
 
-        /* ปุ่มจำนวน (+ / -) */
         .qty-btn {
             background: rgba(30, 41, 59, 0.8);
             color: #cbd5e1;
@@ -95,13 +88,11 @@
         }
         .qty-btn:hover { background: #38bdf8; color: #fff; border-color: #38bdf8; box-shadow: 0 0 10px rgba(56,189,248,0.5); }
         
-        /* Custom Scrollbar ดาร์กโหมด */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.3); border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: rgba(56, 189, 248, 0.6); }
         
-        /* ปรับแต่ง SweetAlert2 ให้อยู่ในโทน Dark/High-Tech */
         .swal2-popup { background: #0f172a !important; border: 1px solid rgba(56, 189, 248, 0.3) !important; color: #f8fafc !important; box-shadow: 0 0 30px rgba(0,0,0,0.8) !important; border-radius: 1rem !important; }
         .swal2-title, .swal2-html-container { color: #f8fafc !important; }
         .swal2-input, .swal2-select, .swal2-file { background: #1e293b !important; border: 1px solid #334155 !important; color: #f8fafc !important; }
@@ -109,44 +100,82 @@
         
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        
-        /* แสงนีออนตัวหนังสือ */
         .text-neon { text-shadow: 0 0 10px rgba(56, 189, 248, 0.6); }
     </style>
 </head>
-<body class="antialiased selection:bg-cyan-500 selection:text-white min-h-screen">
+<body class="antialiased selection:bg-cyan-500 selection:text-white min-h-screen pb-20">
+
+    <!-- Header Navigation -->
+    <header class="sticky top-0 z-40 glass-header px-4 py-3 mb-6">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="w-9 h-9 rounded-xl bg-cyan-500/20 border border-cyan-400/30 flex items-center justify-center text-cyan-400">
+                    <i class="fas fa-box-open text-lg"></i>
+                </div>
+                <div>
+                    <h1 id="headerTitle" class="font-bold text-lg tracking-wide text-white leading-tight">FOKO SYSTEM</h1>
+                    <span class="text-[10px] uppercase tracking-widest text-cyan-400 font-semibold flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span> ONLINE
+                    </span>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2">
+                <button id="btnInventory" onclick="switchMode('inventory')" class="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all bg-cyan-500/20 text-cyan-400 border-cyan-500/50 shadow-[0_0_10px_rgba(56,189,248,0.3)]">
+                    <i class="fas fa-boxes-stacked mr-1"></i> INVENTORY
+                </button>
+                <button id="btnCompare" onclick="switchMode('compare')" class="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all text-slate-400 border-transparent hover:text-cyan-400">
+                    <i class="fas fa-store mr-1"></i> MARKET
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4">
+        <!-- Inventory View -->
+        <div id="inventoryView">
+            <div id="categoryTabs" class="flex space-x-2 overflow-x-auto hide-scrollbar pb-4 mb-4"></div>
+            <div id="itemGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"></div>
+        </div>
+
+        <!-- Compare View -->
+        <div id="compareView" class="hidden">
+            <div id="compareGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+        </div>
+    </main>
+
+    <!-- Floating Add Button -->
+    <button onclick="addNewProductModal()" class="fixed bottom-6 right-6 w-14 h-14 bg-cyan-500 text-slate-950 font-bold rounded-full shadow-[0_0_20px_rgba(56,189,248,0.5)] border border-cyan-300 flex items-center justify-center text-2xl hover:scale-110 active:scale-95 transition-all z-40">
+        <i class="fas fa-plus"></i>
+    </button>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, collection, addDoc, onSnapshot, query, updateDoc, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-    // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-    
-     const firebaseConfig = {
-     apiKey: "AIzaSyBZcd0WjZ5pL76WXPeqwXr_2AIvQgDRUJ0",
-     authDomain: "foko-inventory.firebaseapp.com",
-     projectId: "foko-inventory",
-     storageBucket: "foko-inventory.firebasestorage.app",
-     messagingSenderId: "1000232794009",
-     appId: "1:1000232794009:web:6c7b087d09215131710508",
-     measurementId: "G-SNN69RWKR4"
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyBZcd0WjZ5pL76WXPeqwXr_2AIvQgDRUJ0",
+        authDomain: "foko-inventory.firebaseapp.com",
+        projectId: "foko-inventory",
+        storageBucket: "foko-inventory.firebasestorage.app",
+        messagingSenderId: "1000232794009",
+        appId: "1:1000232794009:web:6c7b087d09215131710508",
+        measurementId: "G-SNN69RWKR4"
     };
-    
+
     let db;
     let auth;
-    let userId;
+    let userId = "shared_foko_user"; // ID กลางให้มือถือกับคอมใช้ร่วมกัน
     const appId = firebaseConfig.appId;
-    
+
     let categories = ["รวมสินค้าทั้งหมด", "บิงซู", "ทาโกะยากิ", "ข้าวโพดคลุกเนย", "น้ำอัดลม", "ของทั่วไป"];
     let defaultStores = ["ร้านทั่วไป", "ร้าน A", "ร้าน B"];
     let customStoresData = [];
     let stores = [...defaultStores];
 
-    if (!firebaseConfig.dummy) {
-        const app = initializeApp(firebaseConfig);
-        db = getFirestore(app);
-        auth = getAuth(app);
-    }
+    const app = initializeApp(firebaseConfig);
+    db = getFirestore(app);
+    auth = getAuth(app);
 
     const state = {
         items: [],
@@ -158,27 +187,13 @@
     };
 
     async function init() {
-    if (!firebaseConfig.dummy) {
         try {
             await signInAnonymously(auth);
-            userId = "shared_foko_user"; // 👈 กำหนด ID กลางแบบนี้
             setupRealtimeListeners();
         } catch (error) {
             console.error("Auth error:", error);
             Swal.fire('Error', 'Cannot connect to database.', 'error');
         }
-    } else {
-        ...
-            userId = 'dummy_user';
-            state.items = [
-                { id: '1', name: 'น้ำแข็งบิงซู', qty: 5, category: 'บิงซู', image: '' },
-                { id: '2', name: 'ผงช็อกโกแลต', qty: 1, category: 'บิงซู', image: '' },
-                { id: '3', name: 'แป้งทาโกะ', qty: 10, category: 'ทาโกะยากิ', image: '' }
-            ];
-            render();
-        }
-        
-        setupEventListeners();
         renderTabs();
     }
 
@@ -187,7 +202,6 @@
         onSnapshot(query(itemsRef), (snapshot) => {
             state.items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             render();
-            updateNotifications();
         });
 
         const compareRef = collection(db, 'artifacts', appId, 'users', userId, 'compare');
@@ -195,22 +209,12 @@
             state.compareItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             if (state.mode === 'compare') renderCompare();
         });
-        
+
         const catRef = collection(db, 'artifacts', appId, 'users', userId, 'categories');
         onSnapshot(query(catRef), (snapshot) => {
              const customCats = snapshot.docs.map(doc => doc.data().name);
              categories = ["รวมสินค้าทั้งหมด", "บิงซู", "ทาโกะยากิ", "ข้าวโพดคลุกเนย", "น้ำอัดลม", "ของทั่วไป", ...customCats];
              renderTabs();
-        });
-        
-        const storeRef = collection(db, 'artifacts', appId, 'users', userId, 'stores');
-        onSnapshot(query(storeRef), (snapshot) => {
-             customStoresData = snapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name }));
-             stores = [...defaultStores, ...customStoresData.map(s => s.name)];
-             const storeModal = document.getElementById('storeManagerModal');
-             if (storeModal && !storeModal.classList.contains('hidden')) {
-                 window.renderStoreList();
-             }
         });
     }
 
@@ -227,20 +231,15 @@
                 confirmButtonText: 'UNLOCK',
                 cancelButtonColor: '#475569',
                 cancelButtonText: 'CANCEL',
-                showCancelButton: true,
-                customClass: {
-                    input: 'border-slate-600 focus:border-cyan-500 bg-slate-900 text-center tracking-[1em] text-lg'
-                }
+                showCancelButton: true
             });
 
-            // แก้ไขรหัสผ่านตรงนี้เป็น 9095
             if (password !== '9095') {
                 if (password !== undefined) {
                     Swal.fire({
                         title: 'ACCESS DENIED', 
                         text: 'รหัสผ่านไม่ถูกต้อง!', 
                         icon: 'error',
-                        iconColor: '#ef4444',
                         confirmButtonColor: '#ef4444'
                     });
                 }
@@ -255,9 +254,8 @@
         if (mode === 'inventory') {
             document.getElementById('inventoryView').classList.remove('hidden');
             document.getElementById('compareView').classList.add('hidden');
-            document.getElementById('headerTitle').innerText = 'Foko Inventory';
+            document.getElementById('headerTitle').innerText = 'FOKO SYSTEM';
             
-            // Toggle Button active states
             invBtn.classList.add('bg-cyan-500/20', 'text-cyan-400', 'border-cyan-500/50', 'shadow-[0_0_10px_rgba(56,189,248,0.3)]');
             invBtn.classList.remove('text-slate-400', 'border-transparent');
             cmpBtn.classList.remove('bg-cyan-500/20', 'text-cyan-400', 'border-cyan-500/50', 'shadow-[0_0_10px_rgba(56,189,248,0.3)]');
@@ -272,711 +270,4 @@
             cmpBtn.classList.add('bg-cyan-500/20', 'text-cyan-400', 'border-cyan-500/50', 'shadow-[0_0_10px_rgba(56,189,248,0.3)]');
             cmpBtn.classList.remove('text-slate-400', 'border-transparent');
             invBtn.classList.remove('bg-cyan-500/20', 'text-cyan-400', 'border-cyan-500/50', 'shadow-[0_0_10px_rgba(56,189,248,0.3)]');
-            invBtn.classList.add('text-slate-400', 'border-transparent');
-
-            renderCompare();
-        }
-    }
-
-    function renderTabs() {
-        const container = document.getElementById('categoryTabs');
-        container.innerHTML = '';
-        categories.forEach(cat => {
-            const btn = document.createElement('button');
-            btn.className = `px-5 py-2 text-sm font-medium whitespace-nowrap ${state.currentCategory === cat ? 'tab-active' : 'tab-inactive'}`;
-            btn.innerText = cat;
-            btn.onclick = () => {
-                state.currentCategory = cat;
-                renderTabs();
-                render();
-            };
-            container.appendChild(btn);
-        });
-        
-        const addBtn = document.createElement('button');
-        addBtn.className = 'px-4 py-2 text-sm font-medium whitespace-nowrap text-slate-400 border border-dashed border-slate-600 rounded-full hover:border-cyan-400 hover:text-cyan-400 transition-all';
-        addBtn.innerHTML = '<i class="fas fa-plus mr-1"></i> เพิ่ม';
-        addBtn.onclick = addCategory;
-        container.appendChild(addBtn);
-    }
-
-    function render() {
-        const grid = document.getElementById('itemGrid');
-        grid.innerHTML = '';
-        
-        let filteredItems = state.items;
-        if (state.currentCategory !== "รวมสินค้าทั้งหมด") {
-            filteredItems = filteredItems.filter(item => item.category === state.currentCategory);
-        }
-
-        filteredItems.forEach(item => {
-            const isLowStock = item.qty < 2;
-            const card = document.createElement('div');
-            // ไฮเทคการ์ดดีไซน์
-            card.className = `rounded-2xl overflow-hidden flex flex-col item-card cursor-pointer ${isLowStock ? 'low-stock' : ''}`;
-            card.setAttribute('ondblclick', `editInventoryItem('${item.id}')`);
-            card.setAttribute('title', 'ดับเบิ้ลคลิกเพื่อแก้ไขข้อมูล');
-            
-            if (item.image) {
-                card.style.backgroundImage = `url('${item.image}')`;
-            }
-
-            card.innerHTML = `
-                <div class="p-4 flex-grow item-overlay flex flex-col justify-between h-full min-h-[140px]">
-                    <div class="z-10">
-                        <div class="flex justify-between items-start mb-2">
-                            <h3 class="font-bold text-lg text-white drop-shadow-md leading-tight">${item.name}</h3>
-                            <button ondblclick="event.stopPropagation()" onclick="deleteItem('${item.id}')" class="text-slate-400 hover:text-red-400 transition-colors ml-2 p-1 rounded-full hover:bg-slate-800/50 z-20 relative"><i class="fas fa-trash-alt"></i></button>
-                        </div>
-                        <span class="inline-block px-2 py-0.5 bg-cyan-900/50 border border-cyan-500/30 text-xs text-cyan-300 rounded backdrop-blur-sm">${item.category}</span>
-                    </div>
-                    
-                    <div class="flex items-end justify-between mt-4 z-10">
-                        <div class="flex flex-col">
-                            <span class="text-[10px] uppercase tracking-wider text-slate-400 mb-1">Stock</span>
-                            <span class="font-bold text-2xl leading-none ${isLowStock ? 'text-red-400 text-neon' : 'text-white'}">${item.qty}</span>
-                        </div>
-                        <div class="flex items-center space-x-1 bg-slate-900/80 rounded-xl p-1 border border-slate-700/50 backdrop-blur-md" ondblclick="event.stopPropagation()">
-                            <button onclick="updateQty('${item.id}', -1, ${item.qty})" class="w-8 h-8 flex items-center justify-center rounded-lg qty-btn"><i class="fas fa-minus text-xs"></i></button>
-                            <button onclick="updateQty('${item.id}', 1, ${item.qty})" class="w-8 h-8 flex items-center justify-center rounded-lg bg-cyan-600 text-white hover:bg-cyan-500 transition-colors border border-cyan-400/50 shadow-[0_0_10px_rgba(56,189,248,0.2)]"><i class="fas fa-plus text-xs"></i></button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            grid.appendChild(card);
-        });
-        
-        if (filteredItems.length === 0) {
-            grid.innerHTML = `<div class="col-span-full flex flex-col items-center justify-center py-16 text-slate-500"><i class="fas fa-box-open text-5xl mb-4 opacity-50"></i><p class="font-medium tracking-wide">ไม่พบสินค้าในระบบ</p></div>`;
-        }
-    }
-    
-    function renderCompare() {
-        const grid = document.getElementById('compareGrid');
-        grid.innerHTML = '';
-        
-        let filtered = state.compareItems;
-        if (state.searchQuery) {
-            filtered = filtered.filter(item => item.name.toLowerCase().includes(state.searchQuery.toLowerCase()));
-        }
-        
-        const grouped = {};
-        filtered.forEach(item => {
-            if (!grouped[item.name]) grouped[item.name] = [];
-            grouped[item.name].push(item);
-        });
-        
-        for (const [name, items] of Object.entries(grouped)) {
-            const validPrices = items.filter(i => i.price > 0).map(i => i.price);
-            const minPrice = validPrices.length > 0 ? Math.min(...validPrices) : -1;
-            
-            items.sort((a, b) => a.price - b.price);
-            
-            const card = document.createElement('div');
-            // Glass panel for compare groups
-            card.className = `glass-panel rounded-2xl p-5 flex flex-col gap-3 relative overflow-hidden`;
-            
-            let listHtml = items.map(item => {
-                const isCheapest = item.price === minPrice && minPrice > 0;
-                return `
-                    <div class="flex justify-between items-center p-3 rounded-xl border transition-all ${isCheapest ? 'bg-cyan-900/20 border-cyan-500/50 shadow-[0_0_15px_rgba(56,189,248,0.15)]' : 'bg-slate-800/30 border-slate-700/50 hover:bg-slate-800/60'}">
-                        <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-full flex items-center justify-center ${isCheapest ? 'bg-cyan-500/20 text-cyan-400' : 'bg-slate-700 text-slate-400'}">
-                                <i class="fas ${isCheapest ? 'fa-crown' : 'fa-store'} text-sm"></i>
-                            </div>
-                            <span class="${isCheapest ? 'text-cyan-300 font-medium' : 'text-slate-300'}">${item.store}</span>
-                        </div>
-                        <div class="flex items-center gap-4">
-                            <span ondblclick="editComparePrice('${item.id}', ${item.price}, '${item.name}', '${item.store}')" 
-                                  class="cursor-pointer hover:text-cyan-400 transition-colors ${isCheapest ? 'text-cyan-400 font-bold text-lg text-neon' : 'text-slate-200 font-semibold'}" 
-                                  title="ดับเบิ้ลคลิกเพื่อแก้ไขราคา">
-                                ฿${item.price}
-                            </span>
-                            <button onclick="deleteCompareItem('${item.id}')" class="text-slate-500 hover:text-red-400 p-1 transition" title="ลบ"><i class="fas fa-times"></i></button>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-            
-            card.innerHTML = `
-                <div class="flex justify-between items-center border-b border-slate-700/50 pb-3 mb-2">
-                    <h3 class="font-bold text-lg text-white flex items-center"><i class="fas fa-tag text-cyan-500 mr-2 opacity-80"></i>${name}</h3>
-                    <span class="text-[10px] uppercase font-bold tracking-wider bg-slate-800 text-slate-400 px-2 py-1 rounded border border-slate-700">${items.length} stores</span>
-                </div>
-                <div class="flex flex-col gap-2">
-                    ${listHtml}
-                </div>
-            `;
-            grid.appendChild(card);
-        }
-        
-        if (Object.keys(grouped).length === 0) {
-            grid.innerHTML = `<div class="col-span-full flex flex-col items-center justify-center py-16 text-slate-500 glass-panel rounded-2xl">
-                <i class="fas fa-satellite-dish text-5xl mb-4 text-slate-600"></i>
-                <p class="text-lg font-medium">ไม่พบข้อมูลเปรียบเทียบ</p>
-            </div>`;
-        }
-    }
-
-    window.updateQty = async function(id, change, currentQty) {
-        if (db && !firebaseConfig.dummy) {
-            const newQty = Math.max(0, currentQty + change);
-            try {
-                await updateDoc(doc(db, 'artifacts', appId, 'users', userId, 'inventory', id), { qty: newQty });
-            } catch (e) {
-                console.error("Error updating", e);
-            }
-        } else {
-            const item = state.items.find(i => i.id === id);
-            if (item) item.qty = Math.max(0, currentQty + change);
-            render();
-            updateNotifications();
-        }
-    }
-
-    window.editInventoryItem = async function(id) {
-        const item = state.items.find(i => i.id === id);
-        if (!item) return;
-
-        const catOptions = categories.filter(c => c !== 'รวมสินค้าทั้งหมด').map(c => `<option value="${c}" ${item.category === c ? 'selected' : ''}>${c}</option>`).join('');
-        let uploadedBase64 = item.image || '';
-        
-        const { value: formValues } = await Swal.fire({
-            title: 'DATA CONFIGURATION',
-            html: `
-                <div class="flex flex-col sm:flex-row gap-4 text-left mt-2">
-                    <div id="editImgPreview" class="w-full sm:w-1/3 border border-slate-600 bg-slate-800/50 rounded-xl flex flex-col items-center justify-center cursor-pointer text-slate-400 hover:bg-slate-700/50 h-32 relative overflow-hidden transition" style="background-image: url('${uploadedBase64}'); background-size: cover; background-position: center;">
-                        <div id="editIconContainer" class="flex flex-col items-center pointer-events-none" style="display: ${uploadedBase64 ? 'none' : 'flex'}">
-                            <i class="fas fa-camera text-2xl mb-1"></i>
-                            <span class="text-[10px] uppercase tracking-wide">Upload</span>
-                        </div>
-                        <input type="file" id="editImageInput" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full">
-                    </div>
-                    <div class="w-full sm:w-2/3 flex flex-col gap-3">
-                        <div>
-                            <label class="text-[10px] uppercase text-cyan-500 font-bold tracking-wider mb-1 block">Item Name</label>
-                            <input id="edit-name" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500 transition" value="${item.name}">
-                        </div>
-                        <div class="flex gap-2">
-                            <div class="w-1/2">
-                                <label class="text-[10px] uppercase text-cyan-500 font-bold tracking-wider mb-1 block">Quantity</label>
-                                <input id="edit-qty" type="number" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500 transition" value="${item.qty}">
-                            </div>
-                            <div class="w-1/2">
-                                <label class="text-[10px] uppercase text-cyan-500 font-bold tracking-wider mb-1 block">Category</label>
-                                <select id="edit-category" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500 transition">${catOptions}</select>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `,
-            focusConfirm: false,
-            showCancelButton: true,
-            confirmButtonText: 'UPDATE',
-            cancelButtonText: 'CANCEL',
-            confirmButtonColor: '#0ea5e9',
-            didOpen: () => {
-                const imgInput = document.getElementById('editImageInput');
-                const imgPreview = document.getElementById('editImgPreview');
-                const iconContainer = document.getElementById('editIconContainer');
-                imgInput.addEventListener('change', (e) => {
-                    const file = e.target.files[0];
-                    if (file) {
-                        const reader = new FileReader();
-                        reader.onload = (ev) => {
-                            uploadedBase64 = ev.target.result;
-                            imgPreview.style.backgroundImage = `url('${uploadedBase64}')`;
-                            if (iconContainer) iconContainer.style.display = 'none';
-                        };
-                        reader.readAsDataURL(file);
-                    }
-                });
-            },
-            preConfirm: () => {
-                const name = document.getElementById('edit-name').value;
-                if (!name) {
-                    Swal.showValidationMessage('กรุณากรอกชื่อสินค้า');
-                    return false;
-                }
-                return {
-                    name: name,
-                    qty: parseInt(document.getElementById('edit-qty').value) || 0,
-                    category: document.getElementById('edit-category').value,
-                    image: uploadedBase64
-                }
-            }
-        });
-
-        if (formValues && formValues.name) {
-            if (db && !firebaseConfig.dummy) {
-                await updateDoc(doc(db, 'artifacts', appId, 'users', userId, 'inventory', id), formValues);
-            } else {
-                const index = state.items.findIndex(i => i.id === id);
-                if (index !== -1) {
-                    state.items[index] = { ...state.items[index], ...formValues };
-                    render();
-                    updateNotifications();
-                }
-            }
-        }
-    }
-
-    window.deleteItem = async function(id) {
-        const result = await Swal.fire({
-            title: 'SYSTEM WARNING',
-            text: "ต้องการลบข้อมูลนี้ออกจากคลังใช่หรือไม่?",
-            icon: 'warning',
-            iconColor: '#ef4444',
-            showCancelButton: true,
-            confirmButtonColor: '#ef4444',
-            cancelButtonColor: '#475569',
-            confirmButtonText: 'DELETE',
-            cancelButtonText: 'CANCEL'
-        });
-
-        if (result.isConfirmed) {
-            if (db && !firebaseConfig.dummy) {
-                await deleteDoc(doc(db, 'artifacts', appId, 'users', userId, 'inventory', id));
-            } else {
-                state.items = state.items.filter(i => i.id !== id);
-                render();
-                updateNotifications();
-            }
-        }
-    }
-
-    window.deleteCompareItem = async function(id) {
-         if (db && !firebaseConfig.dummy) {
-             await deleteDoc(doc(db, 'artifacts', appId, 'users', userId, 'compare', id));
-         } else {
-             state.compareItems = state.compareItems.filter(i => i.id !== id);
-             renderCompare();
-         }
-    }
-
-    window.editComparePrice = async function(id, currentPrice, itemName, storeName) {
-        const { value: newPrice } = await Swal.fire({
-            title: 'PRICE ADJUST',
-            html: `<div class="text-sm text-slate-400 mb-2">${itemName} @ <span class="text-cyan-400 font-bold">${storeName}</span></div>`,
-            input: 'number',
-            inputValue: currentPrice,
-            showCancelButton: true,
-            confirmButtonColor: '#0ea5e9',
-            confirmButtonText: 'SAVE',
-            cancelButtonText: 'CANCEL',
-            inputAttributes: { min: 0, step: 0.01 }
-        });
-
-        if (newPrice !== undefined) {
-            const parsedPrice = parseFloat(newPrice);
-            if (db && !firebaseConfig.dummy) {
-                await updateDoc(doc(db, 'artifacts', appId, 'users', userId, 'compare', id), { price: parsedPrice });
-            } else {
-                const item = state.compareItems.find(i => i.id === id);
-                if (item) item.price = parsedPrice;
-                renderCompare();
-            }
-        }
-    }
-
-    async function addCategory() {
-        const { value: catName } = await Swal.fire({
-            title: 'NEW CATEGORY',
-            input: 'text',
-            inputPlaceholder: 'ชื่อหมวดหมู่...',
-            showCancelButton: true,
-            confirmButtonColor: '#0ea5e9',
-            confirmButtonText: 'ADD'
-        });
-
-        if (catName) {
-            if (db && !firebaseConfig.dummy) {
-                await addDoc(collection(db, 'artifacts', appId, 'users', userId, 'categories'), { name: catName });
-            } else {
-                categories.push(catName);
-                renderTabs();
-            }
-        }
-    }
-
-    window.openStoreManager = function() {
-        document.getElementById('storeManagerModal').classList.remove('hidden');
-        document.getElementById('storeManagerModal').classList.add('flex');
-        window.renderStoreList();
-    }
-
-    window.closeStoreManager = function() {
-        document.getElementById('storeManagerModal').classList.add('hidden');
-        document.getElementById('storeManagerModal').classList.remove('flex');
-        document.getElementById('newStoreInput').value = '';
-    }
-
-    window.renderStoreList = function() {
-        const container = document.getElementById('storeListContainer');
-        container.innerHTML = '';
-        let html = '';
-        
-        defaultStores.forEach((storeName, index) => {
-            html += createStoreListItem(storeName, `default_${index}`, false);
-        });
-        
-        customStoresData.forEach(store => {
-            html += createStoreListItem(store.name, store.id, true);
-        });
-        
-        if (defaultStores.length === 0 && customStoresData.length === 0) {
-            html = '<div class="text-center text-slate-500 py-6 text-sm"><i class="fas fa-store-slash text-3xl mb-2 opacity-50 block"></i>NO STORES FOUND</div>';
-        }
-        
-        container.innerHTML = html;
-    }
-
-    function createStoreListItem(name, id, isCustom) {
-        return `
-            <div class="flex justify-between items-center p-3 border-b border-slate-700/50 last:border-0 rounded-lg hover:bg-slate-800/50 transition">
-                <span class="text-slate-300 font-medium"><i class="fas fa-store text-cyan-600 mr-2 text-sm"></i>${name}</span>
-                <button onclick="deleteStore('${id}', ${isCustom}, '${name}')" class="text-slate-500 hover:text-red-400 w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-800 transition"><i class="fas fa-trash-alt text-xs"></i></button>
-            </div>
-        `;
-    }
-
-    window.addNewStore = async function() {
-        const input = document.getElementById('newStoreInput');
-        const storeName = input.value.trim();
-        if(!storeName) return;
-        
-        if (stores.includes(storeName)) {
-            Swal.fire('Error', 'มีชื่อร้านค้านี้ในระบบแล้ว', 'error');
-            return;
-        }
-        
-        if (db && !firebaseConfig.dummy) {
-            await addDoc(collection(db, 'artifacts', appId, 'users', userId, 'stores'), { name: storeName });
-        } else {
-            customStoresData.push({ id: Date.now().toString(), name: storeName });
-            stores = [...defaultStores, ...customStoresData.map(s => s.name)];
-            window.renderStoreList();
-        }
-        input.value = '';
-    }
-
-    window.deleteStore = async function(id, isCustom, storeName) {
-        const result = await Swal.fire({
-            title: 'CONFIRM DELETE',
-            text: `ลบร้าน "${storeName}" ?`,
-            icon: 'warning',
-            iconColor: '#ef4444',
-            showCancelButton: true,
-            confirmButtonColor: '#ef4444',
-            confirmButtonText: 'DELETE'
-        });
-        
-        if(result.isConfirmed) {
-            if (isCustom) {
-                if (db && !firebaseConfig.dummy) {
-                    await deleteDoc(doc(db, 'artifacts', appId, 'users', userId, 'stores', id));
-                } else {
-                    customStoresData = customStoresData.filter(s => s.id !== id);
-                }
-            } else {
-                const idx = parseInt(id.split('_')[1]);
-                defaultStores.splice(idx, 1);
-            }
-            stores = [...defaultStores, ...customStoresData.map(s => s.name)];
-            window.renderStoreList();
-        }
-    }
-
-    function setupEventListeners() {
-        document.getElementById('compareSearch').addEventListener('input', (e) => {
-            state.searchQuery = e.target.value;
-            renderCompare();
-        });
-
-        document.getElementById('addItemBtn').addEventListener('click', async () => {
-            const catOptions = categories.filter(c => c !== 'รวมสินค้าทั้งหมด').map(c => `<option value="${c}">${c}</option>`).join('');
-            let uploadedBase64 = '';
-            
-            const { value: formValues } = await Swal.fire({
-                title: 'INITIALIZE ITEM',
-                html: `
-                    <div class="flex flex-col sm:flex-row gap-4 text-left mt-2">
-                        <div id="imgPreview" class="w-full sm:w-1/3 border border-slate-600 border-dashed rounded-xl bg-slate-800/30 flex flex-col items-center justify-center cursor-pointer text-slate-500 hover:text-cyan-400 hover:border-cyan-500 h-32 relative overflow-hidden transition-all">
-                            <div id="iconContainer" class="flex flex-col items-center pointer-events-none">
-                                <i class="fas fa-image text-2xl mb-1"></i>
-                                <span class="text-[10px] uppercase font-bold tracking-wide">Select File</span>
-                            </div>
-                            <input type="file" id="imageInput" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full">
-                        </div>
-                        <div class="w-full sm:w-2/3 flex flex-col justify-between gap-3">
-                            <div>
-                                <label class="text-[10px] uppercase text-cyan-500 font-bold tracking-wider mb-1 block">Item Name</label>
-                                <input id="swal-input1" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500 transition" placeholder="ระบุชื่อ...">
-                            </div>
-                            <div class="flex gap-2">
-                                <div class="w-1/2">
-                                    <label class="text-[10px] uppercase text-cyan-500 font-bold tracking-wider mb-1 block">Qty</label>
-                                    <input id="swal-input2" type="number" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500 transition" value="0">
-                                </div>
-                                <div class="w-1/2">
-                                    <label class="text-[10px] uppercase text-cyan-500 font-bold tracking-wider mb-1 block">Category</label>
-                                    <select id="swal-input3" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500 transition">${catOptions}</select>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `,
-                focusConfirm: false,
-                showCancelButton: true,
-                confirmButtonText: 'ADD ITEM',
-                confirmButtonColor: '#0ea5e9',
-                didOpen: () => {
-                    const imgInput = document.getElementById('imageInput');
-                    const imgPreview = document.getElementById('imgPreview');
-                    const iconContainer = document.getElementById('iconContainer');
-                    imgInput.addEventListener('change', (e) => {
-                        const file = e.target.files[0];
-                        if (file) {
-                            const reader = new FileReader();
-                            reader.onload = (ev) => {
-                                uploadedBase64 = ev.target.result;
-                                imgPreview.style.backgroundImage = `url('${uploadedBase64}')`;
-                                imgPreview.style.backgroundSize = 'cover';
-                                imgPreview.style.backgroundPosition = 'center';
-                                imgPreview.classList.remove('border-dashed');
-                                if (iconContainer) iconContainer.style.display = 'none';
-                            };
-                            reader.readAsDataURL(file);
-                        }
-                    });
-                },
-                preConfirm: () => {
-                    const name = document.getElementById('swal-input1').value;
-                    if (!name) { Swal.showValidationMessage('กรุณาระบุชื่อ'); return false; }
-                    return {
-                        name: name,
-                        qty: parseInt(document.getElementById('swal-input2').value) || 0,
-                        category: document.getElementById('swal-input3').value,
-                        image: uploadedBase64
-                    }
-                }
-            });
-
-            if (formValues) {
-                if (db && !firebaseConfig.dummy) {
-                    await addDoc(collection(db, 'artifacts', appId, 'users', userId, 'inventory'), formValues);
-                } else {
-                    state.items.push({ id: Date.now().toString(), ...formValues });
-                    render();
-                    updateNotifications();
-                }
-            }
-        });
-        
-        document.getElementById('addCompareBtn').addEventListener('click', async () => {
-             const storeOptions = stores.map(s => `<option value="${s}">${s}</option>`).join('');
-             const uniqueNames = [...new Set(state.compareItems.map(i => i.name))];
-             const dataListHtml = `<datalist id="compare-names">${uniqueNames.map(n => `<option value="${n}">`).join('')}</datalist>`;
-             
-             const { value: formValues } = await Swal.fire({
-                title: `NEW DATA POINT`,
-                html: dataListHtml +
-                    `<div class="flex flex-col gap-3 text-left mt-2">
-                        <div>
-                            <label class="text-[10px] uppercase text-cyan-500 font-bold tracking-wider mb-1 block">Item Name</label>
-                            <input id="cmp-name" list="compare-names" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-cyan-500">
-                        </div>
-                        <div>
-                            <label class="text-[10px] uppercase text-cyan-500 font-bold tracking-wider mb-1 block">Store Provider</label>
-                            <select id="cmp-store" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-cyan-500">
-                                ${storeOptions}
-                            </select>
-                        </div>
-                        <div>
-                            <label class="text-[10px] uppercase text-cyan-500 font-bold tracking-wider mb-1 block">Price (THB)</label>
-                            <input id="cmp-price" type="number" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-cyan-500" placeholder="0.00">
-                        </div>
-                    </div>`,
-                focusConfirm: false,
-                showCancelButton: true,
-                confirmButtonColor: '#0ea5e9',
-                confirmButtonText: 'SAVE',
-                preConfirm: () => {
-                    const name = document.getElementById('cmp-name').value;
-                    if (!name) return false;
-                    return {
-                        name: name,
-                        price: parseFloat(document.getElementById('cmp-price').value) || 0,
-                        store: document.getElementById('cmp-store').value
-                    }
-                }
-            });
-
-            if (formValues) {
-                if (db && !firebaseConfig.dummy) {
-                    await addDoc(collection(db, 'artifacts', appId, 'users', userId, 'compare'), formValues);
-                } else {
-                    state.compareItems.push({ id: Date.now().toString(), ...formValues });
-                    renderCompare();
-                }
-            }
-        });
-
-        document.getElementById('bellBtn').addEventListener('click', () => {
-            const lowItems = state.items.filter(i => i.qty < 2);
-            if(lowItems.length === 0) {
-                Swal.fire({
-                    title: 'SYSTEM OPTIMAL', 
-                    text: 'จำนวนสต็อกเพียงพอ', 
-                    icon: 'success',
-                    iconColor: '#10b981',
-                    confirmButtonColor: '#10b981'
-                });
-                return;
-            }
-            
-            let htmlList = `<div class="text-left mb-2 flex flex-col gap-2 mt-4 max-h-[50vh] overflow-y-auto hide-scrollbar">`;
-            lowItems.forEach(i => {
-                htmlList += `
-                <div class="flex justify-between items-center bg-red-900/20 p-3 rounded-xl border border-red-500/30">
-                    <div class="flex flex-col">
-                        <span class="font-bold text-red-400 text-base drop-shadow-md">${i.name}</span>
-                        <span class="text-[10px] uppercase tracking-widest text-red-300 opacity-80 mt-1">Remaining: ${i.qty}</span>
-                    </div>
-                    <i class="fas fa-exclamation-triangle text-red-500/50 text-xl"></i>
-                </div>`;
-            });
-            htmlList += `</div>`;
-
-            Swal.fire({
-                title: 'CRITICAL STOCK',
-                html: htmlList,
-                icon: 'warning',
-                iconColor: '#ef4444',
-                confirmButtonText: 'ACKNOWLEDGE',
-                confirmButtonColor: '#ef4444'
-            });
-        });
-    }
-
-    function updateNotifications() {
-        const lowStockCount = state.items.filter(i => i.qty < 2).length;
-        const badge = document.getElementById('notificationBadge');
-        if (lowStockCount > 0) {
-            badge.innerText = lowStockCount;
-            badge.classList.remove('hidden');
-        } else {
-            badge.classList.add('hidden');
-        }
-    }
-
-    window.onload = init;
-</script>
-
-<div class="min-h-screen flex flex-col">
-    
-    <header class="glass-header sticky top-0 z-30">
-        <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 bg-cyan-900/50 border border-cyan-500/50 rounded-xl flex items-center justify-center text-cyan-400 font-bold text-xl shadow-[0_0_15px_rgba(56,189,248,0.3)]">
-                    <i class="fas fa-cube text-lg"></i>
-                </div>
-                <div>
-                    <h1 id="headerTitle" class="font-bold text-lg text-white tracking-wide uppercase">Foko System</h1>
-                    <div class="flex items-center text-[10px] text-cyan-400 font-bold tracking-widest uppercase">
-                        <span class="w-2 h-2 rounded-full bg-cyan-400 mr-2 shadow-[0_0_8px_rgba(56,189,248,0.8)] animate-pulse"></span> ONLINE
-                    </div>
-                </div>
-            </div>
-            
-            <div class="flex items-center space-x-2 sm:space-x-4">
-                <!-- Mode Toggles (Sci-Fi Pills) -->
-                <div class="flex bg-slate-900/80 rounded-full p-1 border border-slate-700/50 backdrop-blur-sm">
-                    <button id="btnInventory" onclick="switchMode('inventory')" class="px-3 sm:px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 bg-cyan-500/20 text-cyan-400 border border-cyan-500/50 shadow-[0_0_10px_rgba(56,189,248,0.3)]" title="คลังสินค้า">
-                        <i class="fas fa-boxes"></i> <span class="hidden sm:inline">Inventory</span>
-                    </button>
-                    <button id="btnCompare" onclick="switchMode('compare')" class="px-3 sm:px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider text-slate-400 border border-transparent hover:text-slate-200 transition-all flex items-center gap-2" title="เปรียบเทียบราคา">
-                        <i class="fas fa-chart-line"></i> <span class="hidden sm:inline">Market</span>
-                    </button>
-                </div>
-                
-                <div class="w-px h-6 bg-slate-700/50 hidden sm:block"></div>
-                
-                <button id="bellBtn" class="relative text-slate-400 hover:text-cyan-400 transition-colors ml-1 w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-800/50">
-                    <i class="fas fa-bell text-lg"></i>
-                    <span id="notificationBadge" class="absolute top-2 right-2 bg-red-500 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center hidden shadow-[0_0_8px_rgba(239,68,68,0.8)] border-none"></span>
-                </button>
-            </div>
-        </div>
-    </header>
-
-    <main class="flex-grow max-w-6xl mx-auto w-full p-4 pb-24">
-        
-        <!-- Inventory View -->
-        <div id="inventoryView" class="">
-            <!-- Category Tabs -->
-            <div class="overflow-x-auto pb-4 mb-2 hide-scrollbar">
-                <div id="categoryTabs" class="flex space-x-3 w-max">
-                    <!-- Tabs rendered here -->
-                </div>
-            </div>
-
-            <!-- Items Grid -->
-            <div id="itemGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                <!-- Cards rendered here -->
-            </div>
-            
-            <!-- Floating Action Button -->
-            <button id="addItemBtn" class="fixed bottom-8 right-8 w-14 h-14 bg-cyan-600 text-white rounded-full shadow-[0_0_20px_rgba(8,145,178,0.5)] flex items-center justify-center text-xl hover:bg-cyan-500 transition-all transform hover:scale-110 z-20 border border-cyan-400/50">
-                <i class="fas fa-plus"></i>
-            </button>
-        </div>
-
-        <!-- Compare View -->
-        <div id="compareView" class="hidden">
-            
-            <div class="glass-panel p-4 rounded-2xl mb-6 flex flex-col sm:flex-row gap-3 items-center border border-cyan-500/20">
-                <div class="flex items-center bg-slate-900/80 rounded-xl px-4 py-2.5 w-full flex-grow border border-slate-700/50 focus-within:border-cyan-500/50 transition-colors">
-                    <i class="fas fa-search text-cyan-500/70 mr-3"></i>
-                    <input id="compareSearch" type="text" placeholder="Scan Database..." class="bg-transparent border-none outline-none w-full text-sm text-slate-200 placeholder-slate-500">
-                </div>
-                <button onclick="window.openStoreManager()" class="w-full sm:w-auto px-5 py-2.5 bg-slate-800 text-cyan-400 rounded-xl text-sm font-bold uppercase tracking-wider hover:bg-slate-700 transition-all border border-slate-600 hover:border-cyan-500/50 flex items-center justify-center whitespace-nowrap">
-                    <i class="fas fa-network-wired mr-2"></i> Nodes
-                </button>
-            </div>
-
-            <!-- Compare Grid -->
-            <div id="compareGrid" class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <!-- Items rendered here -->
-            </div>
-            
-            <!-- Floating Action Button -->
-            <button id="addCompareBtn" class="fixed bottom-8 right-8 w-14 h-14 bg-indigo-600 text-white rounded-full shadow-[0_0_20px_rgba(79,70,229,0.5)] flex items-center justify-center text-xl hover:bg-indigo-500 transition-all transform hover:scale-110 z-20 border border-indigo-400/50">
-                <i class="fas fa-plus"></i>
-            </button>
-        </div>
-
-    </main>
-    
-    <!-- Store Manager Modal (Sci-Fi UI) -->
-    <div id="storeManagerModal" class="fixed inset-0 bg-slate-950/80 z-[100] hidden items-center justify-center backdrop-blur-md transition-opacity px-4">
-        <div class="glass-panel rounded-2xl p-6 w-full max-w-md shadow-2xl flex flex-col max-h-[85vh] border border-cyan-500/30">
-            <div class="flex justify-between items-center mb-5 border-b border-slate-700/50 pb-3">
-                <h2 class="text-lg font-bold text-white tracking-widest uppercase"><i class="fas fa-network-wired mr-2 text-cyan-500"></i> Store Nodes</h2>
-                <button onclick="closeStoreManager()" class="text-slate-500 hover:text-cyan-400 w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-800 transition"><i class="fas fa-times text-lg"></i></button>
-            </div>
-            
-            <div class="flex gap-2 mb-4">
-                <input id="newStoreInput" type="text" placeholder="Add new node..." class="flex-grow bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-cyan-500 transition text-white">
-                <button onclick="addNewStore()" class="bg-cyan-600/20 text-cyan-400 border border-cyan-500/50 px-5 py-2.5 rounded-xl font-bold uppercase tracking-wider hover:bg-cyan-600 hover:text-white transition whitespace-nowrap shadow-[0_0_10px_rgba(56,189,248,0.2)]"><i class="fas fa-plus"></i></button>
-            </div>
-            
-            <div class="flex-grow overflow-y-auto min-h-[250px] rounded-xl p-2 bg-slate-900/50 border border-slate-800 hide-scrollbar" id="storeListContainer">
-                <!-- Lists rendered here -->
-            </div>
-        </div>
-    </div>
-</div>
-
-</body>
-</html>
+            invBtn.classList.add('text-slate-4
