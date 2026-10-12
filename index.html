@@ -139,12 +139,15 @@
 
     <main class="max-w-7xl mx-auto px-4">
         <div id="inventoryView">
-            <!-- เพิ่มช่องค้นหาสินค้าในคลัง -->
+            <!-- ช่องค้นหาสินค้าในคลัง (เพิ่มปุ่ม X) -->
             <div class="mb-5 relative max-w-md mx-auto md:mx-0">
                 <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                     <i class="fas fa-search text-slate-400"></i>
                 </div>
-                <input type="text" id="inventorySearchInput" onkeyup="window.filterInventory()" class="w-full bg-slate-800/80 border border-cyan-500/30 text-white text-sm rounded-2xl focus:ring-cyan-500 focus:border-cyan-500 block pl-11 p-3.5 placeholder-slate-400 shadow-[0_0_15px_rgba(56,189,248,0.1)] transition-all" placeholder="ค้นหาชื่อสินค้าในคลัง (เพื่อแก้ไขจำนวน)...">
+                <input type="text" id="inventorySearchInput" oninput="window.filterInventory()" class="w-full bg-slate-800/80 border border-cyan-500/30 text-white text-sm rounded-2xl focus:ring-cyan-500 focus:border-cyan-500 block pl-11 pr-10 p-3.5 placeholder-slate-400 shadow-[0_0_15px_rgba(56,189,248,0.1)] transition-all" placeholder="ค้นหาชื่อสินค้าในคลัง (เพื่อแก้ไขจำนวน)...">
+                <button id="invClearBtn" onclick="window.clearSearch('inventory')" class="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-white hidden transition-colors">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
 
             <div id="categoryTabs" class="flex space-x-2 overflow-x-auto hide-scrollbar pb-4 mb-4"></div>
@@ -152,15 +155,26 @@
         </div>
 
         <div id="compareView" class="hidden">
-            <!-- ช่องค้นหาสินค้า -->
-            <div class="mb-5 relative max-w-md mx-auto md:mx-0">
-                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <i class="fas fa-search text-slate-400"></i>
+            <!-- จัดกลุ่มส่วนหัวของ Market Data -->
+            <div class="mb-5 flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+                <!-- ช่องค้นหาสินค้า (เพิ่มปุ่ม X) -->
+                <div class="relative w-full max-w-md">
+                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <i class="fas fa-search text-slate-400"></i>
+                    </div>
+                    <input type="text" id="compareSearchInput" oninput="window.filterCompare()" class="w-full bg-slate-800/80 border border-cyan-500/30 text-white text-sm rounded-2xl focus:ring-cyan-500 focus:border-cyan-500 block pl-11 pr-10 p-3.5 placeholder-slate-400 shadow-[0_0_15px_rgba(56,189,248,0.1)] transition-all" placeholder="ค้นหาชื่อสินค้าที่เปรียบเทียบราคา...">
+                    <button id="cmpClearBtn" onclick="window.clearSearch('compare')" class="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-white hidden transition-colors">
+                        <i class="fas fa-times"></i>
+                    </button>
                 </div>
-                <input type="text" id="compareSearchInput" onkeyup="window.filterCompare()" class="w-full bg-slate-800/80 border border-cyan-500/30 text-white text-sm rounded-2xl focus:ring-cyan-500 focus:border-cyan-500 block pl-11 p-3.5 placeholder-slate-400 shadow-[0_0_15px_rgba(56,189,248,0.1)] transition-all" placeholder="ค้นหาชื่อสินค้าที่เปรียบเทียบราคา...">
+                
+                <!-- ปุ่มจัดการร้านค้าแยกต่างหาก -->
+                <button onclick="window.manageStoresModal()" class="px-5 py-3.5 bg-slate-800/80 border border-cyan-500/50 rounded-2xl text-sm font-semibold text-cyan-400 hover:bg-cyan-500/20 hover:shadow-[0_0_15px_rgba(56,189,248,0.2)] transition-all flex items-center justify-center gap-2 whitespace-nowrap">
+                    <i class="fas fa-store-alt"></i> จัดการร้านค้า
+                </button>
             </div>
             
-            <p class="text-xs text-slate-400 mb-4 text-center">💡 ดับเบิ้ลคลิกที่รายการร้านค้าด้านล่างเพื่อแก้ไขราคา</p>
+            <p class="text-xs text-slate-400 mb-4 text-center">💡 ดับเบิ้ลคลิกที่รายการด้านล่างเพื่อแก้ไขราคา</p>
             
             <div id="compareGrid" class="grid grid-cols-1 md:grid-cols-2 gap-5"></div>
         </div>
@@ -196,10 +210,11 @@
     const state = {
         items: [],
         compareItems: [],
+        stores: [], // เก็บรายชื่อร้านค้า
         currentCategory: "รวมสินค้าทั้งหมด",
         mode: 'inventory',
         compareSearchQuery: '',
-        inventorySearchQuery: '' // เพิ่ม state สำหรับการค้นหาในหน้าคลังสินค้า
+        inventorySearchQuery: ''
     };
 
     async function init() {
@@ -232,10 +247,35 @@
              categories = ["รวมสินค้าทั้งหมด", "บิงซู", "ทาโกะยากิ", "ข้าวโพดคลุกเนย", "น้ำอัดลม", "ของทั่วไป", ...customCats];
              renderTabs();
         });
+
+        // ดึงข้อมูลร้านค้า (Market Stores)
+        const storesRef = collection(db, 'artifacts', appId, 'users', userId, 'stores');
+        onSnapshot(query(storesRef), (snapshot) => {
+            state.stores = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        });
     }
 
+    // ฟังก์ชันเคลียร์ช่องค้นหา (ปุ่ม X)
+    window.clearSearch = function(type) {
+        if (type === 'inventory') {
+            document.getElementById('inventorySearchInput').value = '';
+            state.inventorySearchQuery = '';
+            document.getElementById('invClearBtn').classList.add('hidden');
+            render();
+        } else {
+            document.getElementById('compareSearchInput').value = '';
+            state.compareSearchQuery = '';
+            document.getElementById('cmpClearBtn').classList.add('hidden');
+            renderCompare();
+        }
+    };
+
+    // อัปเดตเช็คสินค้าใกล้หมด โดยอิงจากค่า lowStockThreshold ของแต่ละสินค้า (ถ้าไม่มีค่าเริ่มต้นคือ 2)
     window.updateNotificationBadge = function() {
-        const lowStockItems = state.items.filter(item => (item.qty || 0) <= 2);
+        const lowStockItems = state.items.filter(item => {
+            const threshold = item.lowStockThreshold !== undefined ? item.lowStockThreshold : 2;
+            return (item.qty || 0) <= threshold;
+        });
         const badge = document.getElementById('notifBadge');
         const bellIcon = document.getElementById('btnNotification');
         
@@ -252,12 +292,16 @@
     };
 
     window.showLowStockAlert = function() {
-        const lowStockItems = state.items.filter(item => (item.qty || 0) <= 2);
+        const lowStockItems = state.items.filter(item => {
+            const threshold = item.lowStockThreshold !== undefined ? item.lowStockThreshold : 2;
+            return (item.qty || 0) <= threshold;
+        });
+
         if (lowStockItems.length === 0) {
             Swal.fire({
                 icon: 'success',
                 title: 'สถานะปกติ',
-                text: 'ไม่มีสินค้าที่เหลือน้อยกว่า 3 ชิ้น',
+                text: 'ไม่มีสินค้าที่เหลือน้อยกว่ากำหนด',
                 background: '#0f172a',
                 color: '#f8fafc',
                 confirmButtonColor: '#0ea5e9'
@@ -324,9 +368,7 @@
             cmpBtn.className = "px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all bg-cyan-500/20 text-cyan-400 border-cyan-500/50 shadow-[0_0_10px_rgba(56,189,248,0.3)]";
             invBtn.className = "px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all text-slate-400 border-transparent hover:text-cyan-400";
             
-            document.getElementById('compareSearchInput').value = '';
-            state.compareSearchQuery = '';
-            renderCompare();
+            window.clearSearch('compare');
         }
     };
 
@@ -346,9 +388,16 @@
         `).join('');
     }
 
-    // ฟังก์ชันสำหรับกรองข้อมูลเมื่อพิมพ์ค้นหาในหน้า Inventory
+    // ฟังก์ชันค้นหาและจัดการแสดงปุ่ม X ใน Inventory
     window.filterInventory = function() {
-        state.inventorySearchQuery = document.getElementById('inventorySearchInput').value.trim().toLowerCase();
+        const input = document.getElementById('inventorySearchInput');
+        state.inventorySearchQuery = input.value.trim().toLowerCase();
+        
+        if(input.value.length > 0) {
+            document.getElementById('invClearBtn').classList.remove('hidden');
+        } else {
+            document.getElementById('invClearBtn').classList.add('hidden');
+        }
         render();
     };
 
@@ -378,9 +427,12 @@
         }
     };
 
+    // แก้ไขสินค้า: เพิ่มช่องปรับตั้งค่า "เตือนสินค้าใกล้หมด" ได้อิสระ
     window.editProductModal = async function(id) {
         const item = state.items.find(i => i.id === id);
         if(!item) return;
+
+        const currentThreshold = item.lowStockThreshold !== undefined ? item.lowStockThreshold : 2;
 
         const { value: formValues } = await Swal.fire({
             title: 'แก้ไขสินค้า',
@@ -391,6 +443,11 @@
                     <i class="fas fa-camera text-2xl text-cyan-400 mb-2"></i>
                     <p id="edit-upload-text" class="text-sm text-slate-300">คลิกเพื่อเลือกรูปภาพใหม่</p>
                     <input type="file" id="swal-edit-img-file" class="hidden" accept="image/*" onchange="document.getElementById('edit-upload-text').innerText = this.files[0] ? 'เลือกไฟล์: ' + this.files[0].name : 'คลิกเพื่อเลือกรูปภาพใหม่'">
+                </div>
+
+                <div class="mb-3 text-left">
+                    <label class="text-xs text-cyan-400 ml-1">เตือนเมื่อสินค้าเหลือน้อยกว่าหรือเท่ากับกี่ชิ้น?</label>
+                    <input id="swal-edit-low-stock" type="number" class="swal2-input mt-1" placeholder="ค่าเริ่มต้น 2" value="${currentThreshold}">
                 </div>
                 
                 <select id="swal-edit-cat" class="swal2-select mb-3">
@@ -410,7 +467,7 @@
 
                 const fileInput = document.getElementById('swal-edit-img-file');
                 const file = fileInput.files[0];
-                let imageUrl = item.image; // ใช้รูปเดิมถ้าไม่ได้อัปโหลดใหม่
+                let imageUrl = item.image; 
 
                 if (file) {
                     Swal.showLoading();
@@ -424,13 +481,11 @@
                                     const MAX_SIZE = 300; 
                                     let width = img.width;
                                     let height = img.height;
-                                    
                                     if (width > height) {
                                         if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; }
                                     } else {
                                         if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; }
                                     }
-                                    
                                     canvas.width = width;
                                     canvas.height = height;
                                     const ctx = canvas.getContext('2d');
@@ -452,6 +507,7 @@
                 return {
                     name: name,
                     image: imageUrl,
+                    lowStockThreshold: parseInt(document.getElementById('swal-edit-low-stock').value) || 0,
                     category: document.getElementById('swal-edit-cat').value
                 }
             }
@@ -475,14 +531,14 @@
             ? state.items 
             : state.items.filter(i => i.category === state.currentCategory);
 
-        // นำค่าที่ค้นหามากรองข้อมูลอีกชั้นหนึ่ง
         if (state.inventorySearchQuery) {
             filtered = filtered.filter(i => (i.name || '').toLowerCase().includes(state.inventorySearchQuery));
         }
 
         const container = document.getElementById('itemGrid');
         container.innerHTML = filtered.map(item => {
-            const isLow = item.qty <= 2;
+            const threshold = item.lowStockThreshold !== undefined ? item.lowStockThreshold : 2;
+            const isLow = (item.qty || 0) <= threshold;
             const bgImage = item.image && item.image.trim() !== '' ? item.image : 'https://via.placeholder.com/300x300/1e293b/94a3b8?text=No+Image';
             return `
             <div class="item-card rounded-2xl overflow-hidden h-48 flex flex-col justify-end ${isLow ? 'low-stock' : ''}" style="background-image: url('${bgImage}')" ondblclick="window.editProductModal('${item.id}')">
@@ -512,8 +568,16 @@
         }
     }
 
+    // ฟังก์ชันค้นหาใน Compare (โชว์/ซ่อน ปุ่ม X)
     window.filterCompare = function() {
-        state.compareSearchQuery = document.getElementById('compareSearchInput').value.trim().toLowerCase();
+        const input = document.getElementById('compareSearchInput');
+        state.compareSearchQuery = input.value.trim().toLowerCase();
+        
+        if(input.value.length > 0) {
+            document.getElementById('cmpClearBtn').classList.remove('hidden');
+        } else {
+            document.getElementById('cmpClearBtn').classList.add('hidden');
+        }
         renderCompare();
     };
 
@@ -573,25 +637,56 @@
         container.innerHTML = html || '<div class="text-center text-slate-400 mt-10 p-8 glass-panel rounded-2xl"><i class="fas fa-search text-3xl mb-3 text-slate-500"></i><p>ไม่พบข้อมูลสินค้านี้</p></div>';
     }
 
+    // ฟังก์ชันจัดการเพิ่มร้านค้าสำหรับให้เลือกในหน้า Compare
+    window.manageStoresModal = async function() {
+        const { value: newStoreName } = await Swal.fire({
+            title: 'เพิ่มร้านค้าใหม่',
+            input: 'text',
+            inputPlaceholder: 'พิมพ์ชื่อร้านค้า (เช่น แม็คโคร, โลตัส)',
+            showCancelButton: true,
+            confirmButtonText: 'เพิ่มรายชื่อร้าน',
+            cancelButtonText: 'ยกเลิก',
+            inputValidator: (value) => {
+                if (!value) return 'กรุณาพิมพ์ชื่อร้านค้าครับ';
+            }
+        });
+
+        if (newStoreName) {
+            try {
+                await addDoc(collection(db, 'artifacts', appId, 'users', userId, 'stores'), { name: newStoreName.trim() });
+                Swal.fire({ icon: 'success', title: 'เพิ่มร้านสำเร็จ', timer: 1500, showConfirmButton: false });
+            } catch (error) {
+                Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเพิ่มร้านค้าได้', 'error');
+            }
+        }
+    };
+
     window.editCompareItem = async function(id) {
         const item = state.compareItems.find(i => i.id === id);
         if(!item) return;
 
         const products = [...new Set(state.compareItems.map(i => i.productName || i.name).filter(Boolean))];
-        const stores = [...new Set(state.compareItems.map(i => i.storeName).filter(Boolean))];
-
         const productOpts = products.map(p => `<option value="${p}"></option>`).join('');
-        const storeOpts = stores.map(s => `<option value="${s}"></option>`).join('');
+        
+        // สร้าง Dropdown จากรายชื่อร้านค้าที่บันทึกไว้ใน Setting (และมีร้านเดิมเผื่อไว้)
+        const allStores = [...new Set([...state.stores.map(s => s.name), item.storeName])];
+        const storeSelectOpts = allStores.map(s => `<option value="${s}" ${s === item.storeName ? 'selected' : ''}>${s}</option>`).join('');
 
         const { value: formValues } = await Swal.fire({
             title: 'แก้ไขข้อมูลราคา',
             html: `
                 <datalist id="dl-products">${productOpts}</datalist>
-                <datalist id="dl-stores">${storeOpts}</datalist>
                 
-                <input id="swal-edit-c-pname" list="dl-products" class="swal2-input mb-3" placeholder="ชื่อสินค้า" value="${item.productName || item.name || ''}">
-                <input id="swal-edit-c-sname" list="dl-stores" class="swal2-input mb-3" placeholder="ชื่อร้านค้า" value="${item.storeName || ''}">
-                <input id="swal-edit-c-price" type="number" class="swal2-input mb-3" placeholder="ราคา (บาท)" value="${item.price || 0}">
+                <label class="block text-left text-xs text-slate-400 mb-1 ml-1">ชื่อสินค้า</label>
+                <input id="swal-edit-c-pname" list="dl-products" class="swal2-input mb-3 !mt-0" placeholder="ชื่อสินค้า" value="${item.productName || item.name || ''}">
+                
+                <label class="block text-left text-xs text-slate-400 mb-1 ml-1">เลือกร้านค้า</label>
+                <select id="swal-edit-c-sname" class="swal2-select mb-3 !mt-0 !w-full max-w-full">
+                    ${storeSelectOpts || '<option value="" disabled>ไม่มีรายชื่อร้านค้า</option>'}
+                </select>
+
+                <label class="block text-left text-xs text-slate-400 mb-1 ml-1">ราคา</label>
+                <input id="swal-edit-c-price" type="number" class="swal2-input mb-3 !mt-0" placeholder="ราคา (บาท)" value="${item.price || 0}">
             `,
             focusConfirm: false,
             showCancelButton: true,
@@ -603,7 +698,7 @@
                 const price = document.getElementById('swal-edit-c-price').value;
                 
                 if (!pname || !sname) {
-                    Swal.showValidationMessage('กรุณาใส่ชื่อสินค้าและชื่อร้านค้าให้ครบ');
+                    Swal.showValidationMessage('กรุณาใส่ชื่อสินค้าและเลือกร้านค้า');
                     return false;
                 }
                 return { 
@@ -629,7 +724,7 @@
         if(event) event.stopPropagation();
         const result = await Swal.fire({
             title: 'ยืนยันการลบ?',
-            text: "คุณต้องการลบข้อมูลร้านค้านี้ใช่หรือไม่",
+            text: "คุณต้องการลบข้อมูลราคานี้ใช่หรือไม่",
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#ef4444',
@@ -652,20 +747,36 @@
 
     window.addCompareModal = async function() {
         const products = [...new Set(state.compareItems.map(i => i.productName || i.name).filter(Boolean))];
-        const stores = [...new Set(state.compareItems.map(i => i.storeName).filter(Boolean))];
-
         const productOpts = products.map(p => `<option value="${p}"></option>`).join('');
-        const storeOpts = stores.map(s => `<option value="${s}"></option>`).join('');
+
+        // สร้าง Dropdown ให้เลือกร้านค้าจากระบบ (ดึงมาจาก state.stores)
+        const storeSelectOpts = state.stores.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
+
+        if(state.stores.length === 0) {
+            Swal.fire({
+                icon: 'info',
+                title: 'ยังไม่มีร้านค้า',
+                text: 'กรุณากดปุ่ม "จัดการร้านค้า" เพื่อเพิ่มรายชื่อร้านค้าก่อนครับ'
+            });
+            return;
+        }
 
         const { value: formValues } = await Swal.fire({
-            title: 'เพิ่มข้อมูลร้านค้า/ราคา',
+            title: 'เพิ่มข้อมูลราคาจากร้านค้า',
             html: `
                 <datalist id="dl-products-add">${productOpts}</datalist>
-                <datalist id="dl-stores-add">${storeOpts}</datalist>
 
-                <input id="swal-compare-pname" list="dl-products-add" class="swal2-input mb-3" placeholder="ชื่อสินค้า (พิมพ์หรือเลือกรายชื่อเดิม)">
-                <input id="swal-compare-sname" list="dl-stores-add" class="swal2-input mb-3" placeholder="ชื่อร้านค้า (พิมพ์หรือเลือกรายชื่อเดิม)">
-                <input id="swal-compare-price" type="number" class="swal2-input mb-3" placeholder="ราคา (บาท)">
+                <label class="block text-left text-xs text-slate-400 mb-1 ml-1">ชื่อสินค้า</label>
+                <input id="swal-compare-pname" list="dl-products-add" class="swal2-input mb-3 !mt-0" placeholder="พิมพ์ชื่อสินค้า">
+                
+                <label class="block text-left text-xs text-slate-400 mb-1 ml-1">เลือกร้านค้า</label>
+                <select id="swal-compare-sname" class="swal2-select mb-3 !mt-0 !w-full max-w-full">
+                    <option value="" disabled selected>-- กดเพื่อเลือกร้านค้า --</option>
+                    ${storeSelectOpts}
+                </select>
+
+                <label class="block text-left text-xs text-slate-400 mb-1 ml-1">ราคาที่พบ</label>
+                <input id="swal-compare-price" type="number" class="swal2-input mb-3 !mt-0" placeholder="ราคา (บาท)">
             `,
             focusConfirm: false,
             showCancelButton: true,
@@ -676,8 +787,8 @@
                 const sname = document.getElementById('swal-compare-sname').value;
                 const price = document.getElementById('swal-compare-price').value;
                 
-                if (!pname || !sname) {
-                    Swal.showValidationMessage('กรุณาใส่ชื่อสินค้าและชื่อร้านค้าให้ครบ');
+                if (!pname || !sname || sname === "") {
+                    Swal.showValidationMessage('กรุณาใส่ชื่อสินค้าและเลือกร้านค้า');
                     return false;
                 }
                 return { 
@@ -700,7 +811,6 @@
     };
 
     window.addNewProductModal = async function() {
-        // เลือกว่าสินค้านั้นอยู่ในหมวดหมู่ที่เปิดอยู่ (ถ้าอยู่หน้ารวมทั้งหมด ให้เป็นบิงซู)
         let defaultCat = state.currentCategory === "รวมสินค้าทั้งหมด" ? categories[1] : state.currentCategory;
 
         const { value: formValues } = await Swal.fire({
@@ -714,9 +824,19 @@
                     <input type="file" id="swal-img-file" class="hidden" accept="image/*" onchange="document.getElementById('upload-text').innerText = this.files[0] ? 'เลือกไฟล์: ' + this.files[0].name : 'คลิกเพื่อเลือกรูปภาพ'">
                 </div>
 
-                <input id="swal-qty" type="number" class="swal2-input mb-3" placeholder="จำนวนเริ่มต้น" value="1">
+                <div class="flex gap-2 mb-3">
+                    <div class="w-1/2">
+                        <label class="block text-left text-xs text-slate-400 mb-1 ml-1">จำนวนเริ่มต้น</label>
+                        <input id="swal-qty" type="number" class="swal2-input !mt-0 !w-full" placeholder="จำนวน" value="1">
+                    </div>
+                    <div class="w-1/2">
+                        <label class="block text-left text-xs text-slate-400 mb-1 ml-1">เตือนใกล้หมดที่</label>
+                        <input id="swal-low-stock" type="number" class="swal2-input !mt-0 !w-full" placeholder="ชิ้น" value="2">
+                    </div>
+                </div>
                 
-                <select id="swal-cat" class="swal2-select">
+                <label class="block text-left text-xs text-slate-400 mb-1 ml-1">หมวดหมู่</label>
+                <select id="swal-cat" class="swal2-select !mt-0 !w-full max-w-full">
                     ${categories.filter(c => c !== 'รวมสินค้าทั้งหมด').map(c => `<option value="${c}" ${c === defaultCat ? 'selected' : ''}>${c}</option>`).join('')}
                 </select>
             `,
@@ -724,7 +844,6 @@
             showCancelButton: true,
             confirmButtonText: 'บันทึก',
             cancelButtonText: 'ยกเลิก',
-            // เพิ่มการกด Enter เพื่อบันทึก
             didOpen: () => {
                 const popup = Swal.getPopup();
                 popup.addEventListener('keyup', (e) => {
@@ -785,6 +904,7 @@
                     name: name,
                     image: imageUrl,
                     qty: parseInt(document.getElementById('swal-qty').value) || 0,
+                    lowStockThreshold: parseInt(document.getElementById('swal-low-stock').value) || 0,
                     category: document.getElementById('swal-cat').value
                 }
             }
