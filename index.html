@@ -93,6 +93,10 @@
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.3); border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: rgba(56, 189, 248, 0.6); }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.3); border-radius: 4px; }
         
         .swal2-popup { background: #0f172a !important; border: 1px solid rgba(56, 189, 248, 0.3) !important; color: #f8fafc !important; box-shadow: 0 0 30px rgba(0,0,0,0.8) !important; border-radius: 1rem !important; }
         .swal2-title, .swal2-html-container { color: #f8fafc !important; }
@@ -139,7 +143,6 @@
 
     <main class="max-w-7xl mx-auto px-4">
         <div id="inventoryView">
-            <!-- ช่องค้นหาสินค้าในคลัง (เพิ่มปุ่ม X) -->
             <div class="mb-5 relative max-w-md mx-auto md:mx-0">
                 <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                     <i class="fas fa-search text-slate-400"></i>
@@ -155,9 +158,7 @@
         </div>
 
         <div id="compareView" class="hidden">
-            <!-- จัดกลุ่มส่วนหัวของ Market Data -->
             <div class="mb-5 flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
-                <!-- ช่องค้นหาสินค้า (เพิ่มปุ่ม X) -->
                 <div class="relative w-full max-w-md">
                     <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                         <i class="fas fa-search text-slate-400"></i>
@@ -168,7 +169,6 @@
                     </button>
                 </div>
                 
-                <!-- ปุ่มจัดการร้านค้าแยกต่างหาก -->
                 <button onclick="window.manageStoresModal()" class="px-5 py-3.5 bg-slate-800/80 border border-cyan-500/50 rounded-2xl text-sm font-semibold text-cyan-400 hover:bg-cyan-500/20 hover:shadow-[0_0_15px_rgba(56,189,248,0.2)] transition-all flex items-center justify-center gap-2 whitespace-nowrap">
                     <i class="fas fa-store-alt"></i> จัดการร้านค้า
                 </button>
@@ -210,7 +210,7 @@
     const state = {
         items: [],
         compareItems: [],
-        stores: [], // เก็บรายชื่อร้านค้า
+        stores: [], 
         currentCategory: "รวมสินค้าทั้งหมด",
         mode: 'inventory',
         compareSearchQuery: '',
@@ -248,14 +248,12 @@
              renderTabs();
         });
 
-        // ดึงข้อมูลร้านค้า (Market Stores)
         const storesRef = collection(db, 'artifacts', appId, 'users', userId, 'stores');
         onSnapshot(query(storesRef), (snapshot) => {
             state.stores = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         });
     }
 
-    // ฟังก์ชันเคลียร์ช่องค้นหา (ปุ่ม X)
     window.clearSearch = function(type) {
         if (type === 'inventory') {
             document.getElementById('inventorySearchInput').value = '';
@@ -270,7 +268,6 @@
         }
     };
 
-    // อัปเดตเช็คสินค้าใกล้หมด โดยอิงจากค่า lowStockThreshold ของแต่ละสินค้า (ถ้าไม่มีค่าเริ่มต้นคือ 2)
     window.updateNotificationBadge = function() {
         const lowStockItems = state.items.filter(item => {
             const threshold = item.lowStockThreshold !== undefined ? item.lowStockThreshold : 2;
@@ -388,7 +385,6 @@
         `).join('');
     }
 
-    // ฟังก์ชันค้นหาและจัดการแสดงปุ่ม X ใน Inventory
     window.filterInventory = function() {
         const input = document.getElementById('inventorySearchInput');
         state.inventorySearchQuery = input.value.trim().toLowerCase();
@@ -427,7 +423,6 @@
         }
     };
 
-    // แก้ไขสินค้า: เพิ่มช่องปรับตั้งค่า "เตือนสินค้าใกล้หมด" ได้อิสระ
     window.editProductModal = async function(id) {
         const item = state.items.find(i => i.id === id);
         if(!item) return;
@@ -568,7 +563,6 @@
         }
     }
 
-    // ฟังก์ชันค้นหาใน Compare (โชว์/ซ่อน ปุ่ม X)
     window.filterCompare = function() {
         const input = document.getElementById('compareSearchInput');
         state.compareSearchQuery = input.value.trim().toLowerCase();
@@ -637,14 +631,45 @@
         container.innerHTML = html || '<div class="text-center text-slate-400 mt-10 p-8 glass-panel rounded-2xl"><i class="fas fa-search text-3xl mb-3 text-slate-500"></i><p>ไม่พบข้อมูลสินค้านี้</p></div>';
     }
 
-    // ฟังก์ชันจัดการเพิ่มร้านค้าสำหรับให้เลือกในหน้า Compare
-    window.manageStoresModal = async function() {
+    // ====== ฟังก์ชันจัดการร้านค้า (แบบใหม่ มีโชว์รายชื่อและลบได้) ======
+    window.manageStoresModal = function() {
+        let storeListHtml = state.stores.map(store => `
+            <div class="flex justify-between items-center bg-slate-800/80 p-3 rounded-xl mb-2 border border-slate-700/50">
+                <span class="text-slate-200 font-medium">${store.name}</span>
+                <button onclick="window.deleteStore('${store.id}')" class="text-slate-400 hover:text-red-400 transition-colors w-8 h-8 rounded-full bg-slate-900/50 flex items-center justify-center">
+                    <i class="fas fa-trash text-sm"></i>
+                </button>
+            </div>
+        `).join('');
+
+        if (state.stores.length === 0) {
+            storeListHtml = '<div class="text-center text-slate-400 my-6 text-sm">ยังไม่มีรายชื่อร้านค้า</div>';
+        }
+
+        Swal.fire({
+            title: 'จัดการร้านค้า',
+            html: `
+                <div class="max-h-64 overflow-y-auto mb-4 text-left pr-2 mt-4 custom-scrollbar">
+                    ${storeListHtml}
+                </div>
+                <button onclick="window.addStorePrompt()" class="w-full py-3 bg-cyan-500/20 text-cyan-400 border border-cyan-500/50 rounded-xl hover:bg-cyan-500/30 transition-all font-semibold shadow-[0_0_15px_rgba(56,189,248,0.1)]">
+                    <i class="fas fa-plus mr-1"></i> เพิ่มร้านค้าใหม่
+                </button>
+            `,
+            showConfirmButton: false,
+            showCloseButton: true,
+            background: '#0f172a',
+            color: '#f8fafc'
+        });
+    };
+
+    window.addStorePrompt = async function() {
         const { value: newStoreName } = await Swal.fire({
             title: 'เพิ่มร้านค้าใหม่',
             input: 'text',
             inputPlaceholder: 'พิมพ์ชื่อร้านค้า (เช่น แม็คโคร, โลตัส)',
             showCancelButton: true,
-            confirmButtonText: 'เพิ่มรายชื่อร้าน',
+            confirmButtonText: 'เพิ่ม',
             cancelButtonText: 'ยกเลิก',
             inputValidator: (value) => {
                 if (!value) return 'กรุณาพิมพ์ชื่อร้านค้าครับ';
@@ -654,12 +679,39 @@
         if (newStoreName) {
             try {
                 await addDoc(collection(db, 'artifacts', appId, 'users', userId, 'stores'), { name: newStoreName.trim() });
-                Swal.fire({ icon: 'success', title: 'เพิ่มร้านสำเร็จ', timer: 1500, showConfirmButton: false });
+                setTimeout(() => window.manageStoresModal(), 300); // กลับไปหน้าจัดการร้านค้า
             } catch (error) {
                 Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเพิ่มร้านค้าได้', 'error');
             }
+        } else {
+            window.manageStoresModal();
         }
     };
+
+    window.deleteStore = async function(id) {
+        const result = await Swal.fire({
+            title: 'ยืนยันการลบร้านค้านี้?',
+            text: "หากลบแล้วจะไม่สามารถกู้คืนชื่อร้านนี้ได้",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#334155',
+            confirmButtonText: 'ลบร้านค้า',
+            cancelButtonText: 'ยกเลิก'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                await deleteDoc(doc(db, 'artifacts', appId, 'users', userId, 'stores', id));
+                setTimeout(() => window.manageStoresModal(), 300); // กลับไปหน้าจัดการร้านค้า
+            } catch (error) {
+                Swal.fire('ข้อผิดพลาด', 'ไม่สามารถลบร้านค้าได้', 'error');
+            }
+        } else {
+            window.manageStoresModal();
+        }
+    };
+    // ========================================================
 
     window.editCompareItem = async function(id) {
         const item = state.compareItems.find(i => i.id === id);
@@ -668,7 +720,6 @@
         const products = [...new Set(state.compareItems.map(i => i.productName || i.name).filter(Boolean))];
         const productOpts = products.map(p => `<option value="${p}"></option>`).join('');
         
-        // สร้าง Dropdown จากรายชื่อร้านค้าที่บันทึกไว้ใน Setting (และมีร้านเดิมเผื่อไว้)
         const allStores = [...new Set([...state.stores.map(s => s.name), item.storeName])];
         const storeSelectOpts = allStores.map(s => `<option value="${s}" ${s === item.storeName ? 'selected' : ''}>${s}</option>`).join('');
 
@@ -749,7 +800,6 @@
         const products = [...new Set(state.compareItems.map(i => i.productName || i.name).filter(Boolean))];
         const productOpts = products.map(p => `<option value="${p}"></option>`).join('');
 
-        // สร้าง Dropdown ให้เลือกร้านค้าจากระบบ (ดึงมาจาก state.stores)
         const storeSelectOpts = state.stores.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
 
         if(state.stores.length === 0) {
