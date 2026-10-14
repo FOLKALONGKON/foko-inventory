@@ -4,6 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Foko Inventory</title>
+    
+    <!-- ========================================== -->
+    <!-- เพิ่มโค้ดใส่โลโก้ (Favicon) บนแท็บเบราว์เซอร์ตรงนี้ -->
+    <link rel="icon" type="image/jpeg" href="S__45105156.jpg">
+    <link rel="apple-touch-icon" href="S__45105156.jpg">
+    <!-- ========================================== -->
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -112,8 +119,9 @@
     <header class="sticky top-0 z-40 glass-header px-4 py-3 mb-6">
         <div class="max-w-7xl mx-auto flex justify-between items-center">
             <div class="flex items-center space-x-3">
-                <div class="w-9 h-9 rounded-xl bg-cyan-500/20 border border-cyan-400/30 flex items-center justify-center text-cyan-400">
-                    <i class="fas fa-box-open text-lg"></i>
+                <div class="w-9 h-9 rounded-xl border border-cyan-400/30 flex items-center justify-center text-cyan-400 overflow-hidden bg-white">
+                    <!-- นำโลโก้มาแสดงตรงมุมซ้ายบนของเว็บด้วย -->
+                    <img src="S__45105156.jpg" alt="Logo" class="w-full h-full object-cover">
                 </div>
                 <div>
                     <h1 id="headerTitle" class="font-bold text-lg tracking-wide text-white leading-tight">FOKO SYSTEM</h1>
@@ -711,7 +719,6 @@
             window.manageStoresModal();
         }
     };
-    // ========================================================
 
     window.editCompareItem = async function(id) {
         const item = state.compareItems.find(i => i.id === id);
